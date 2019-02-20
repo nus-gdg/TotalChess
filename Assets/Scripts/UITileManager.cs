@@ -79,6 +79,12 @@ public class UITileManager : MonoBehaviour {
 		}
     }
 
+    // use this
+    void Kill(int sx, int sz) {
+        pieceArray[sx, sz].GetComponent<UIPiece>().alive = false;
+        pieceArray[sx, sz] = null;
+    }
+
     // use this 
     void BounceTowards(int sx, int sz, int dx, int dz) {
         int deltax = sx, deltaz = sz;
