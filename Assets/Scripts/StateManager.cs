@@ -21,9 +21,28 @@ public class StateManager : MonoBehaviour {
         board.SetPieceAtSquare(A_PIECE_2, new Square(2, 2));
         board.SetPieceAtSquare(A_PIECE_3, new Square(1, 3));
         board.SetPieceAtSquare(B_PIECE_1, new Square(3, 2));
-        board.SetPieceAtSquare(B_PIECE_2, new Square(3, 3));
-        board.SetPieceAtSquare(B_PIECE_3, new Square(3, 5));
+        board.SetPieceAtSquare(B_PIECE_2, new Square(2, 3));
+        board.SetPieceAtSquare(B_PIECE_3, new Square(3, 4));
         CalculateNextState();
+    }
+
+    void CalculateNextState()
+    {
+        Move[] moves = new Move[]
+        {
+            new Move(A_PIECE_1),
+            new Move(A_PIECE_2, Move.Direction.RIGHT),
+            new Move(A_PIECE_3, Move.Direction.DOWN),
+            new Move(B_PIECE_1, Move.Direction.UP),
+            new Move(B_PIECE_2, Move.Direction.UP),
+            new Move(B_PIECE_3, Move.Direction.LEFT),
+        };
+        MoveMetaData[] resolvedMoveDatas = ResolveMovement(moves);
+        foreach (MoveMetaData resolveData in resolvedMoveDatas)
+        {
+            Debug.Log(resolveData);
+        }
+        ResolveCombat(resolvedMoveDatas);
     }
 
     class MoveMetaData
@@ -75,25 +94,39 @@ public class StateManager : MonoBehaviour {
         return lockedSquares.Contains(square);
     }
 
-    void CalculateNextState()
+    void ResolveCombat(MoveMetaData[] moveDatas)
     {
-        Move[] moves = new Move[]
+        foreach (MoveMetaData moveData in moveDatas)
         {
-            new Move(A_PIECE_1),
-            new Move(A_PIECE_2, Move.Direction.DOWN),
-            new Move(A_PIECE_3, Move.Direction.DOWN),
-            new Move(B_PIECE_1, Move.Direction.UP),
-            new Move(B_PIECE_2, Move.Direction.UP),
-            new Move(B_PIECE_3, Move.Direction.LEFT),
-        };
-        MoveMetaData[] resolvedMoveDatas = ResolveMovement(moves);
-        foreach (MoveMetaData resolveData in resolvedMoveDatas)
-        {
-            Debug.Log(resolveData);
+            Piece piece = moveData.piece;
+            Move.Direction direction = moveData.direction;
+            // where the piece is during combat
+            Square combatSquare = moveData.isBounce ? moveData.nextSquare : moveData.currentSquare;
+
+            // check for attackers
+            List<MoveMetaData> attackedBy = new List<MoveMetaData>();
+            foreach (MoveMetaData otherMoveData in moveDatas)
+            {
+                Piece otherPiece = otherMoveData.piece;
+                if (piece == otherPiece) continue;
+                if (otherMoveData.direction == Move.Direction.NONE) continue;
+                if (piece.owner == otherPiece.owner) continue;
+                Square attackingSquare = otherMoveData.nextSquare;
+                if (combatSquare == attackingSquare) attackedBy.Add(otherMoveData);
+            }
+            ApplyRetaliationDamage(piece, attackedBy);
         }
-        foreach (Square s in lockedSquares)
+    }
+
+    // Damage Calculation to be implemented
+    void ApplyRetaliationDamage(Piece piece, ICollection<MoveMetaData> attackerMoveDatas)
+    {
+        int damageToEachAttacker = piece.attack;
+        foreach (MoveMetaData attackerMoveData in attackerMoveDatas)
         {
-            Debug.Log(s);
+            Piece attacker = attackerMoveData.piece;
+            attacker.health -= damageToEachAttacker;
+            Debug.Log(attacker.uid);
         }
     }
 
@@ -141,18 +174,13 @@ public class StateManager : MonoBehaviour {
                     if (i == index) continue;
                     int otherIndex = moveIndices[i]; // other move index for consideration
                     MoveMetaData otherMoveData = moveMetaDatas[otherIndex];
-                    if (moveData.nextSquare == otherMoveData.nextSquare)
-                    {
-                        LockSquare(moveData.currentSquare);
-                        LockSquare(otherMoveData.currentSquare);
-                        moveData.isBounce = true; // mark as a potential bounce for now
-                        otherMoveData.isBounce = true; // mark as a potential bounce for now
-                        isValidMove = false;
-                    }
 
-                    // Consider Opposing movement
-                    if (moveData.nextSquare == otherMoveData.currentSquare &&
-                       moveData.currentSquare == otherMoveData.nextSquare)
+                    bool enteringSameSquare = moveData.nextSquare == otherMoveData.nextSquare;
+                    bool opposingMovement =
+                        moveData.nextSquare == otherMoveData.currentSquare &&
+                        moveData.currentSquare == otherMoveData.nextSquare;
+
+                    if (enteringSameSquare || opposingMovement)
                     {
                         LockSquare(moveData.currentSquare);
                         LockSquare(otherMoveData.currentSquare);
@@ -175,12 +203,14 @@ public class StateManager : MonoBehaviour {
             moveData.direction = Move.Direction.NONE;
         });
 
-        // find out the real bounces
+        // figure out bounces
         for (int i = 0; i < moveMetaDatas.Length; i++)
         {
             MoveMetaData moveData = moveMetaDatas[i];
-            if (!moveData.isBounce) continue;
-            moveData.isBounce = !IsSquareLocked(moveData.nextSquare);
+            // piece did not move or already moved to a unlocked (empty) square
+            if (moveData.direction == Move.Direction.NONE) continue;
+            bool nextSquareLocked = IsSquareLocked(moveData.nextSquare);
+            moveData.isBounce = !nextSquareLocked;
         }
 
         // return

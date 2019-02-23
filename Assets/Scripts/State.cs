@@ -70,18 +70,12 @@ namespace State {
         {
             switch (direction)
             {
-                case Direction.UP:
-                    return "UP";
-                case Direction.DOWN:
-                    return "DOWN";
-                case Direction.LEFT:
-                    return "LEFT";
-                case Direction.RIGHT:
-                    return "RIGHT";
-                case Direction.NONE:
-                    return "NONE";
-                default:
-                    return "NONE";
+                case Direction.UP:    return "UP";
+                case Direction.DOWN:  return "DOWN";
+                case Direction.LEFT:  return "LEFT";
+                case Direction.RIGHT: return "RIGHT";
+                case Direction.NONE:  return "NONE";
+                default:              return "NONE";
             }
         }
     }
