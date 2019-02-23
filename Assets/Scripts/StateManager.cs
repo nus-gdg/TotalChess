@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using Log;
 using State;
 using System;
 using System.Linq;
@@ -7,14 +8,16 @@ using System.Linq;
 public class StateManager : MonoBehaviour {
     HashSet<Square> lockedSquares = new HashSet<Square>();
     // FOR TESTING:
-    Board board = new Board(6, 6);                   //-------------------------------
-    Piece A_PIECE_1 = new Piece("uida1", Player.A);  //| A1 |    |    |    |    |    |
-    Piece A_PIECE_2 = new Piece("uida2", Player.A);  //|    |    |    | A3 |    |    |
-    Piece A_PIECE_3 = new Piece("uida3", Player.A);  //|    |    | A2 |    |    |    |
-                                                     //|    |    | B1 | B2 | B3 |    |
-    Piece B_PIECE_1 = new Piece("uidb1", Player.B);  //|    |    |    |    |    |    |
-    Piece B_PIECE_2 = new Piece("uidb2", Player.B);  //|    |    |    |    |    |    |
-    Piece B_PIECE_3 = new Piece("uidb3", Player.B);  //-------------------------------
+    Board board = new Board(6, 6);                   //  | 0  | 1  | 2  | 3  | 4  | 5  |
+                                                     //---------------------------------
+    Piece A_PIECE_1 = new Piece("uida1", Player.A);  //0 | A1 |    |    |    |    |    |
+    Piece A_PIECE_2 = new Piece("uida2", Player.A);  //1 |    |    |    | A3 |    |    |
+    Piece A_PIECE_3 = new Piece("uida3", Player.A);  //2 |    |    | A2 | B2 |    |    |
+                                                     //3 |    |    | B1 |    | B3 |    |
+    Piece B_PIECE_1 = new Piece("uidb1", Player.B);  //4 |    |    |    |    |    |    |
+    Piece B_PIECE_2 = new Piece("uidb2", Player.B);  //5 |    |    |    |    |    |    |
+    Piece B_PIECE_3 = new Piece("uidb3", Player.B);  //---------------------------------
+
     void Start()
     {
         board.SetPieceAtSquare(A_PIECE_1, new Square(0, 0));
@@ -37,15 +40,35 @@ public class StateManager : MonoBehaviour {
             new Move(B_PIECE_2, Move.Direction.UP),
             new Move(B_PIECE_3, Move.Direction.LEFT),
         };
-        MoveMetaData[] resolvedMoveDatas = ResolveMovement(moves);
-        foreach (MoveMetaData resolveData in resolvedMoveDatas)
+        MoveData[] resolvedMoveDatas = ResolveMovement(moves);
+        PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
+
+        Debug.Log("PL Format: puid, health, combatSq, finalSq");
+        Debug.Log("Attack Format: puid, damage, direction");
+        foreach (PhaseLog pl in phaseLogs)
         {
-            Debug.Log(resolveData);
+            String plDebug = string.Format(
+                "{0} {1} {2} {3}",
+                pl.piece.uid,
+                pl.piece.health,
+                pl.moveLog.combatSquare,
+                pl.moveLog.finalSquare
+            );
+            Debug.Log(plDebug);
+            foreach (AttackLog al in pl.attackLogs)
+            {
+                String alDebug = string.Format(
+                   "{0} {1} {2}",
+                   pl.piece.uid,
+                   al.damage,
+                   Move.DirectionToString(al.direction)
+               );
+                Debug.Log(alDebug);
+            }
         }
-        ResolveCombat(resolvedMoveDatas);
     }
 
-    class MoveMetaData
+    class MoveData
     {
         public Move.Direction direction;
         public Piece piece;
@@ -53,7 +76,7 @@ public class StateManager : MonoBehaviour {
         public Square nextSquare; // cached next square
         public bool isBounce = false;
 
-        public MoveMetaData(Move move, Square currentSquare, Square nextSquare)
+        public MoveData(Move move, Square currentSquare, Square nextSquare)
         {
             this.direction = move.direction;
             this.piece = move.piece;
@@ -64,7 +87,7 @@ public class StateManager : MonoBehaviour {
         public override string ToString()
         {
             return String.Format(
-                "[Move Piece {0}, currentSq {1}, direction {2}, isBounce {3}]",
+                "[MoveData Piece {0}, currentSq {1}, direction {2}, isBounce {3}]",
                 piece.uid,
                 currentSquare,
                 Move.DirectionToString(direction),
@@ -94,18 +117,20 @@ public class StateManager : MonoBehaviour {
         return lockedSquares.Contains(square);
     }
 
-    void ResolveCombat(MoveMetaData[] moveDatas)
+    PhaseLog[] ResolveCombat(MoveData[] moveDatas)
     {
-        foreach (MoveMetaData moveData in moveDatas)
+        PhaseLog[] phaseLogs = new PhaseLog[moveDatas.Length];
+        for (int i = 0; i < moveDatas.Length; i++)
         {
+            MoveData moveData = moveDatas[i];
             Piece piece = moveData.piece;
             Move.Direction direction = moveData.direction;
             // where the piece is during combat
             Square combatSquare = moveData.isBounce ? moveData.nextSquare : moveData.currentSquare;
 
             // check for attackers
-            List<MoveMetaData> attackedBy = new List<MoveMetaData>();
-            foreach (MoveMetaData otherMoveData in moveDatas)
+            List<MoveData> attackedBy = new List<MoveData>();
+            foreach (MoveData otherMoveData in moveDatas)
             {
                 Piece otherPiece = otherMoveData.piece;
                 if (piece == otherPiece) continue;
@@ -114,28 +139,44 @@ public class StateManager : MonoBehaviour {
                 Square attackingSquare = otherMoveData.nextSquare;
                 if (combatSquare == attackingSquare) attackedBy.Add(otherMoveData);
             }
-            ApplyRetaliationDamage(piece, attackedBy);
+
+            // Create Phase Log Here
+            List<AttackLog> attackLogs = ApplyAndRecordDamage(piece, attackedBy);
+            Square finalSquare = moveData.isBounce ? moveData.currentSquare : combatSquare;
+            MoveLog moveLog = new MoveLog(combatSquare, finalSquare);
+            PhaseLog phaseLog = new PhaseLog(piece, moveLog, attackLogs);
+            phaseLogs[i] = phaseLog;
         }
+
+        return phaseLogs;
     }
 
     // Damage Calculation to be implemented
-    void ApplyRetaliationDamage(Piece piece, ICollection<MoveMetaData> attackerMoveDatas)
+    // This is the retaliation damage done to other enemies
+    List<AttackLog> ApplyAndRecordDamage(Piece piece, ICollection<MoveData> attackerMoveDatas)
     {
-        int damageToEachAttacker = piece.attack;
-        foreach (MoveMetaData attackerMoveData in attackerMoveDatas)
+        int baseDamage = piece.attack;
+        List<AttackLog> attackLogs = new List<AttackLog>();
+        foreach (MoveData attackerMoveData in attackerMoveDatas)
         {
+            int damage = baseDamage;
+            // apply enemy specific multipliers here
+
             Piece attacker = attackerMoveData.piece;
-            attacker.health -= damageToEachAttacker;
-            Debug.Log(attacker.uid);
+            attacker.health -= damage;
+            Move.Direction directionOfRetaliation = Move.OppositeDirection(attackerMoveData.direction);
+            AttackLog attackLog = new AttackLog(damage, directionOfRetaliation);
+            attackLogs.Add(attackLog);
         }
+        return attackLogs;
     }
 
-    MoveMetaData[] ResolveMovement(Move[] moves)
+    MoveData[] ResolveMovement(Move[] moves)
     {
         ResetLockedSquares();
 
-        MoveMetaData[] moveMetaDatas =
-            moves.Select(move => new MoveMetaData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
+        MoveData[] moveMetaDatas =
+            moves.Select(move => new MoveData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
                  .ToArray();
 
         List<int> moveIndices = Enumerable.Range(0, moves.Length).ToList();
@@ -143,14 +184,13 @@ public class StateManager : MonoBehaviour {
         // Consider stationary pieces
         moveIndices = moveIndices.Where(mInd =>
         {
-            MoveMetaData moveData = moveMetaDatas[mInd];
+            MoveData moveData = moveMetaDatas[mInd];
             bool isStationary =
                 moveData.direction == Move.Direction.NONE ||
                 moveData.currentSquare == moveData.nextSquare;
             if (isStationary) LockSquare(moveData.currentSquare);
             return !isStationary;
         }).ToList();
-
 
         bool hasInvalidMoves = true;
 
@@ -159,7 +199,7 @@ public class StateManager : MonoBehaviour {
             int previousLength = moveIndices.Count;
             moveIndices = moveIndices.Where((mInd, index) =>
             {
-                MoveMetaData moveData = moveMetaDatas[mInd];
+                MoveData moveData = moveMetaDatas[mInd];
                 bool isValidMove = !moveData.isBounce;
                 //Consider entering a locked square
                 if (IsSquareLocked(moveData.nextSquare))
@@ -173,7 +213,7 @@ public class StateManager : MonoBehaviour {
                 {
                     if (i == index) continue;
                     int otherIndex = moveIndices[i]; // other move index for consideration
-                    MoveMetaData otherMoveData = moveMetaDatas[otherIndex];
+                    MoveData otherMoveData = moveMetaDatas[otherIndex];
 
                     bool enteringSameSquare = moveData.nextSquare == otherMoveData.nextSquare;
                     bool opposingMovement =
@@ -196,7 +236,7 @@ public class StateManager : MonoBehaviour {
         List<int> validMoveIndices = moveIndices;
         validMoveIndices.ForEach(validMoveIndex =>
         {
-            MoveMetaData moveData = moveMetaDatas[validMoveIndex];
+            MoveData moveData = moveMetaDatas[validMoveIndex];
             Debug.Assert(!IsSquareLocked(moveData.nextSquare)); // sanity check
             Debug.Assert(!moveData.isBounce); // sanity check
             moveData.currentSquare = moveData.nextSquare;
@@ -206,7 +246,7 @@ public class StateManager : MonoBehaviour {
         // figure out bounces
         for (int i = 0; i < moveMetaDatas.Length; i++)
         {
-            MoveMetaData moveData = moveMetaDatas[i];
+            MoveData moveData = moveMetaDatas[i];
             // piece did not move or already moved to a unlocked (empty) square
             if (moveData.direction == Move.Direction.NONE) continue;
             bool nextSquareLocked = IsSquareLocked(moveData.nextSquare);

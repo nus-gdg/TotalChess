@@ -78,6 +78,19 @@ namespace State {
                 default:              return "NONE";
             }
         }
+
+        public static Direction OppositeDirection(Direction direction)
+        {
+            switch (direction)
+            {
+                case Direction.UP:    return Direction.DOWN;
+                case Direction.DOWN:  return Direction.UP;
+                case Direction.LEFT:  return Direction.RIGHT;
+                case Direction.RIGHT: return Direction.LEFT;
+                case Direction.NONE:  return Direction.NONE;
+                default:              return Direction.NONE;
+            }
+        }
     }
 
     class Square
