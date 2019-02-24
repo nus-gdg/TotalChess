@@ -161,9 +161,32 @@ public class StateManager : MonoBehaviour {
         {
             int damage = baseDamage;
             // apply enemy specific multipliers here
+            // damage dampening if outnumbered
+            switch (attackerMoveDatas.Length) {
+                case 2:   // 40% on 2 enemies
+                    damage = (int)(damage * 0.4);  break;
+                case 3:   // 20% on 3 enemies
+                    damage = (int)(damage * 0.2);  break;
+                case 4:   // 5% on 4 enemies
+                    damage = (int)(damage * 0.05); break;
+            }
+            
+            // unit type effectiveness
+            if(piece.Type == SPEAR)
+                if(attackerMoveData.piece.Type == SWORD)
+                    damage = (int)(damage * 1.2);
+            else if(piece.Type == HORSE)
+                if(attackerMoveData.piece.Type == SPEAR)
+                    damage = (int)(damage * 1.2);
+            else if(piece.Type == SWORD)
+                else if(attackerMoveData.piece.Type == HORSE)
+                    damage = (int)(damage * 1.2);
+
+            // scale damage based on health
+            damage = (int)(damage * (health / (double)100));
 
             Piece attacker = attackerMoveData.piece;
-            attacker.health -= damage;
+            attacker.health -= (damage < 1) ? 1 : damage;   // at least deal 1 dmg
             Move.Direction directionOfRetaliation = Move.OppositeDirection(attackerMoveData.direction);
             AttackLog attackLog = new AttackLog(damage, directionOfRetaliation);
             attackLogs.Add(attackLog);
