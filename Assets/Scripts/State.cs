@@ -10,9 +10,9 @@ namespace State {
     {
         public enum Type { SWORD, SPEAR, HORSE }
         public Player owner;
-        public int health = 100;
-        public int attack = 5;
-        public int def = 5;
+        public int health;
+        public int attack;
+        public int def;
         public Type type;
 
         public string uid; // unique id for a piece
@@ -26,6 +26,21 @@ namespace State {
             this.uid = uid;
             this.owner = owner;
             this.type = type;
+            switch(type)
+            {
+                case Type.SWORD:
+                    this.health = 100; this.attack = 5; this.def = 5;
+                    break;
+                case Type.SPEAR:
+                    this.health = 100; this.attack = 7; this.def = 3;
+                    break;
+                case Type.HORSE:
+                    this.health = 80; this.attack = 9; this.def = 1;
+                    break;
+                default:
+                    this.health = 100; this.attack = 5; this.def = 5;
+                    break;
+            }
         }
 
         public override int GetHashCode()
@@ -51,6 +66,14 @@ namespace State {
         public static bool operator !=(Piece a, Piece b)
         {
             return !(a == b);
+        }
+
+        public bool IsCounteredBy(Piece a)
+        {
+            if (type == Type.HORSE && a.type == Type.SWORD) return true;
+            else if (type == Type.HORSE && a.type == Type.SPEAR) return true;
+            else if (type == Type.SWORD && a.type == Type.HORSE) return true;
+            else return false;
         }
     }
 

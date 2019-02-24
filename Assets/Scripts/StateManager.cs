@@ -178,36 +178,25 @@ public class StateManager : MonoBehaviour {
         List<AttackLog> attackLogs = new List<AttackLog>();
         foreach (MoveData attackerMoveData in attackerMoveDatas)
         {
-            int damage = baseDamage;
+            double damage = baseDamage;
             // apply enemy specific multipliers here
             // damage dampening if outnumbered
-            switch (attackerMoveDatas.Length) {
+            switch (attackerMoveDatas.Count)
+            {
                 case 2:   // 40% on 2 enemies
-                    damage = (int)(damage * 0.4);  break;
+                    damage *= 0.4;  break;
                 case 3:   // 20% on 3 enemies
-                    damage = (int)(damage * 0.2);  break;
+                    damage *= 0.2;  break;
                 case 4:   // 5% on 4 enemies
-                    damage = (int)(damage * 0.05); break;
+                    damage *= 0.05; break;
             }
-            
-            // unit type effectiveness
-            if(piece.Type == SPEAR)
-                if(attackerMoveData.piece.Type == SWORD)
-                    damage = (int)(damage * 1.2);
-            else if(piece.Type == HORSE)
-                if(attackerMoveData.piece.Type == SPEAR)
-                    damage = (int)(damage * 1.2);
-            else if(piece.Type == SWORD)
-                else if(attackerMoveData.piece.Type == HORSE)
-                    damage = (int)(damage * 1.2);
-
-            // scale damage based on health
-            damage = (int)(damage * (health / (double)100));
+            if (piece.IsCounteredBy(attackerMoveData.piece)) damage *= 1.2;
+            damage *= piece.health / 100.0;
 
             Piece attacker = attackerMoveData.piece;
-            attacker.health -= (damage < 1) ? 1 : damage;   // at least deal 1 dmg
+            attacker.health -= (damage < 1) ? 1 : (int)damage;   // at least deal 1 dmg
             Move.Direction directionOfRetaliation = Move.OppositeDirection(attackerMoveData.direction);
-            AttackLog attackLog = new AttackLog(damage, directionOfRetaliation);
+            AttackLog attackLog = new AttackLog((int)damage, directionOfRetaliation);
             attackLogs.Add(attackLog);
         }
         return attackLogs;
