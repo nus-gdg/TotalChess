@@ -26,13 +26,8 @@ public class StateManager : MonoBehaviour {
         board.SetPieceAtSquare(B_PIECE_1, new Square(3, 2));
         board.SetPieceAtSquare(B_PIECE_2, new Square(2, 3));
         board.SetPieceAtSquare(B_PIECE_3, new Square(3, 4));
-        CalculateNextState();
-    }
 
-    void CalculateNextState()
-    {
-        Move[] moves = new Move[]
-        {
+        Move[] moves = new Move[] {
             new Move(A_PIECE_1),
             new Move(A_PIECE_2, Move.Direction.RIGHT),
             new Move(A_PIECE_3, Move.Direction.DOWN),
@@ -40,8 +35,18 @@ public class StateManager : MonoBehaviour {
             new Move(B_PIECE_2, Move.Direction.UP),
             new Move(B_PIECE_3, Move.Direction.LEFT),
         };
+
+        // 3 phases for 1 turn, for now just repeat moves
+        CalculateNextPhase(moves);
+        CalculateNextPhase(moves);
+        CalculateNextPhase(moves);
+    }
+
+    void CalculateNextPhase(Move[] moves)
+    {
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
+        UpdateBoard(board, phaseLogs);
 
         Debug.Log("PL Format: puid, health, combatSq, finalSq");
         Debug.Log("Attack Format: puid, damage, direction");
@@ -117,6 +122,20 @@ public class StateManager : MonoBehaviour {
         return lockedSquares.Contains(square);
     }
 
+    void UpdateBoard(Board board, PhaseLog[] logs)
+    {
+        foreach (PhaseLog log in logs)
+        {
+            Piece piece = log.piece;
+            if (piece.health <= 0)
+            {
+                board.RemovePieceFromBoard(piece);
+                continue;
+            }
+            board.SetPieceAtSquare(piece, log.moveLog.finalSquare);
+        }
+    }
+
     PhaseLog[] ResolveCombat(MoveData[] moveDatas)
     {
         PhaseLog[] phaseLogs = new PhaseLog[moveDatas.Length];
@@ -176,10 +195,11 @@ public class StateManager : MonoBehaviour {
         ResetLockedSquares();
 
         MoveData[] moveMetaDatas =
-            moves.Select(move => new MoveData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
+            moves.Where(move => board.HasPiece(move.piece))
+                 .Select(move => new MoveData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
                  .ToArray();
 
-        List<int> moveIndices = Enumerable.Range(0, moves.Length).ToList();
+        List<int> moveIndices = Enumerable.Range(0, moveMetaDatas.Length).ToList();
 
         // Consider stationary pieces
         moveIndices = moveIndices.Where(mInd =>

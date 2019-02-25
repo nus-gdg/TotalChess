@@ -139,8 +139,6 @@ namespace State {
         int numCols;
         Dictionary<Piece, Square> pieceToSquare = new Dictionary<Piece, Square>();
 
-        List<Piece> pieces;
-
         public Board(int rows, int cols)
         {
             numRows = rows;
@@ -170,7 +168,13 @@ namespace State {
 
         public void SetPieceAtSquare(Piece piece, Square square)
         {
+            pieceToSquare.Remove(piece);
             pieceToSquare[piece] = square;
+        }
+
+        public void RemovePieceFromBoard(Piece piece)
+        {
+            pieceToSquare.Remove(piece);
         }
 
         public Square NextSquare(Move move)
@@ -178,6 +182,11 @@ namespace State {
             Square currentSquare = GetCurrentSquare(move.piece);
             Move.Direction direction = move.direction;
             return NextSquare(currentSquare, direction);
+        }
+
+        public bool HasPiece(Piece piece)
+        {
+            return pieceToSquare.ContainsKey(piece);
         }
 
         public Square GetCurrentSquare(Piece piece)
