@@ -1,27 +1,28 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
-namespace State {
+public static class State {
 
-    enum Player { A, B }
+    public enum Player { A, B }
 
-    class Piece
+    public class Piece
     {
         public enum Type { SWORD, SPEAR, HORSE }
+
         public Player owner;
+
+        //Revise: Change to id? Haha
+        public string uid; // unique id for a piece
+
+        public Type type;
+
         public int health = 100;
         public int attack = 5;
         public int def = 5;
-        public Type type;
 
-        public string uid; // unique id for a piece
-
-        public Piece(
-            string uid,
-            Player owner,
-            Type type = Type.SWORD
-        )
+        public Piece (string uid, Player owner, Type type = Type.SWORD)
         {
             this.uid = uid;
             this.owner = owner;
@@ -52,11 +53,47 @@ namespace State {
         {
             return !(a == b);
         }
+
+        public override string ToString()
+        {
+            return uid;
+        }
+
+        public Move MakeMove(Move.Direction direction)
+        {
+            return new Move(this, direction);
+        }
+
+        public Move MoveUp()
+        {
+            return MakeMove(State.Move.Direction.UP);
+        }
+
+        public Move MoveDown()
+        {
+            return MakeMove(State.Move.Direction.DOWN);
+        }
+
+        public Move MoveLeft()
+        {
+            return MakeMove(State.Move.Direction.LEFT);
+        }
+
+        public Move MoveRight()
+        {
+            return MakeMove(State.Move.Direction.RIGHT);
+        }
+
+        public Move Move()
+        {
+            return MakeMove(State.Move.Direction.NONE);
+        }
     }
 
-    class Move
+    public class Move
     {
         public enum Direction { UP, DOWN, LEFT, RIGHT, NONE }
+
         public Piece piece;
         public Direction direction;
 
@@ -66,6 +103,7 @@ namespace State {
             this.direction = direction;
         }
 
+        //Revise: Think can just call enum.ToString()
         public static string DirectionToString(Direction direction)
         {
             switch (direction)
@@ -93,15 +131,17 @@ namespace State {
         }
     }
 
-    class Square
+    public class Square
     {
         public int row;
         public int col;
+
         public Square(int row, int col)
         {
             this.row = row;
             this.col = col;
         }
+
         public override int GetHashCode()
         {
             return row * 31 + col;
@@ -133,36 +173,37 @@ namespace State {
         }
     }
 
-    class Board
+    public class Board
     {
-        int numRows;
-        int numCols;
-        Dictionary<Piece, Square> pieceToSquare = new Dictionary<Piece, Square>();
+        public int rows;
+        public int cols;
 
-        List<Piece> pieces;
+        Dictionary<Piece, Square> pieceToSquare = new Dictionary<Piece, Square>();
+        Dictionary<Square, Piece> squareToPiece = new Dictionary<Square, Piece>();
 
         public Board(int rows, int cols)
         {
-            numRows = rows;
-            numCols = cols;
+            this.rows = rows;
+            this.cols = cols;
         }
 
         public Square NextSquare(Square currentSquare, Move.Direction direction)
         {
             int row, col;
+
             switch (direction)
             {
                 case Move.Direction.UP:
                     row = currentSquare.row > 0 ? currentSquare.row - 1 : 0;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.DOWN:
-                    row = currentSquare.row < numRows -1 ? currentSquare.row + 1 : numRows - 1;
+                    row = currentSquare.row < rows -1 ? currentSquare.row + 1 : rows - 1;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.LEFT:
                     col = currentSquare.col > 0 ? currentSquare.col - 1 : 0;
                     return new Square(currentSquare.row, col);
                 case Move.Direction.RIGHT:
-                    col = currentSquare.col < numCols - 1 ? currentSquare.col + 1 : numCols - 1;
+                    col = currentSquare.col < cols - 1 ? currentSquare.col + 1 : cols - 1;
                     return new Square(currentSquare.row, col);
             }
             return currentSquare;
@@ -171,18 +212,35 @@ namespace State {
         public void SetPieceAtSquare(Piece piece, Square square)
         {
             pieceToSquare[piece] = square;
+            squareToPiece[square] = piece;
         }
 
         public Square NextSquare(Move move)
         {
             Square currentSquare = GetCurrentSquare(move.piece);
             Move.Direction direction = move.direction;
+
             return NextSquare(currentSquare, direction);
         }
 
         public Square GetCurrentSquare(Piece piece)
         {
             return pieceToSquare[piece];
+        }
+
+        public Piece GetCurrentPiece(Square square)
+        {
+            return squareToPiece[square];
+        }
+
+        public bool ContainsPiece(Square square)
+        {
+            return squareToPiece.ContainsKey(square);
+        }
+
+        public List<Piece> GetPieces()
+        {
+            return pieceToSquare.Keys.ToList();
         }
     }
 

@@ -1,53 +1,144 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using Log;
-using State;
+using static State;
 using System;
 using System.Linq;
 
 public class StateManager : MonoBehaviour {
     HashSet<Square> lockedSquares = new HashSet<Square>();
-    // FOR TESTING:
-    Board board = new Board(6, 6);                   //  | 0  | 1  | 2  | 3  | 4  | 5  |
-                                                     //---------------------------------
-    Piece A_PIECE_1 = new Piece("uida1", Player.A);  //0 | A1 |    |    |    |    |    |
-    Piece A_PIECE_2 = new Piece("uida2", Player.A);  //1 |    |    |    | A3 |    |    |
-    Piece A_PIECE_3 = new Piece("uida3", Player.A);  //2 |    |    | A2 | B2 |    |    |
-                                                     //3 |    |    | B1 |    | B3 |    |
-    Piece B_PIECE_1 = new Piece("uidb1", Player.B);  //4 |    |    |    |    |    |    |
-    Piece B_PIECE_2 = new Piece("uidb2", Player.B);  //5 |    |    |    |    |    |    |
-    Piece B_PIECE_3 = new Piece("uidb3", Player.B);  //---------------------------------
 
-    void Start()
+    // FOR TESTING:
+    public Board board;
+
+    /* FOR TESTING:
+     *  | 0  | 1  | 2  | 3  | 4  | 5  |
+     * --------------------------------
+     *0 | B2 | A4 |    |    |    |    |
+     *1 | A3 | B1 |    |    |    |    |
+     *2 |    |    |    |    |    | B4 |
+     *3 |    |    | A1 | A2 | B3 |    |
+     *4 |    |    |    |    |    |    |
+     *5 |    |    |    |    |    |    |
+     * -------------------------------
+     */
+
+    public void CreatePieces(int numPieces)
     {
-        board.SetPieceAtSquare(A_PIECE_1, new Square(0, 0));
-        board.SetPieceAtSquare(A_PIECE_2, new Square(2, 2));
-        board.SetPieceAtSquare(A_PIECE_3, new Square(1, 3));
-        board.SetPieceAtSquare(B_PIECE_1, new Square(3, 2));
-        board.SetPieceAtSquare(B_PIECE_2, new Square(2, 3));
-        board.SetPieceAtSquare(B_PIECE_3, new Square(3, 4));
+        CreatePieces(Player.A, numPieces);
+        CreatePieces(Player.B, numPieces);
+    }
+
+    public void CreatePieces(Player player, int numPieces)
+    {
+        Piece piece;
+        Square square;
+
+        for (int pieceNumber = 1; pieceNumber <= numPieces; pieceNumber++)
+        {
+            //Create Player A pieces
+            piece = ChoosePiece(pieceNumber, player);
+            square = ChooseSquare(piece);
+
+            board.SetPieceAtSquare(piece, square);
+            //Debug.Log(string.Format("{0} {1}", piece, square));
+        }
+    }
+
+    public Piece ChoosePiece(int pieceNumber, Player player)
+    {
+        //STUB
+        Piece.Type type = ChooseType();
+
+        return new Piece(player.ToString() + pieceNumber, player, type);
+    }
+
+    public Piece.Type ChooseType()
+    {
+        //STUB
+        return Piece.Type.SWORD;
+    }
+
+    //Actual will not contain @param piece
+    public Square ChooseSquare(Piece piece)
+    {
+        //STUB
+        switch (piece.uid)
+        {
+            case "A1": return new Square(0, 0);
+            case "A2": return new Square(2, 2);
+            case "A3": return new Square(1, 3);
+
+            case "B1": return new Square(3, 2);
+            case "B2": return new Square(2, 3);
+            case "B3": return new Square(3, 4);
+
+            default: return null;
+        }
+    }
+
+    public void CreateBoard(int rows = 6, int cols = 6)
+    {
+        board = new Board(rows, cols);
+    }
+
+    public void Start()
+    {
+        CreateBoard(6, 6);
+
+        CreatePieces(3);
+
+        //Debug.Log(string.Join(" , ", board.GetPieces()));
+
+        //Run
         CalculateNextState();
     }
 
-    void CalculateNextState()
+    public Move[] PlayMoves()
     {
-        Move[] moves = new Move[]
+        Move[] moves = new Move[board.GetPieces().Count];
+
+        int i = 0;
+
+        foreach (Piece piece in board.GetPieces())
         {
-            new Move(A_PIECE_1),
-            new Move(A_PIECE_2, Move.Direction.RIGHT),
-            new Move(A_PIECE_3, Move.Direction.DOWN),
-            new Move(B_PIECE_1, Move.Direction.UP),
-            new Move(B_PIECE_2, Move.Direction.UP),
-            new Move(B_PIECE_3, Move.Direction.LEFT),
-        };
+            moves[i] = ChooseMove(piece);
+            i++;
+        }
+
+        return moves;
+    }
+
+    public Move ChooseMove(Piece piece)
+    {
+        //STUB
+        switch (piece.uid)
+        {
+            case "A1": return piece.Move();
+            case "A2": return piece.MoveRight();
+            case "A3": return piece.MoveDown();
+
+            case "B1": return piece.MoveUp();
+            case "B2": return piece.MoveUp();
+            case "B3": return piece.MoveLeft();
+
+            default: return null;
+        }
+    }
+
+    public void CalculateNextState()
+    {
+        Move[] moves = PlayMoves();
+
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
 
         Debug.Log("PL Format: puid, health, combatSq, finalSq");
         Debug.Log("Attack Format: puid, damage, direction");
+
         foreach (PhaseLog pl in phaseLogs)
         {
-            String plDebug = string.Format(
+            string plDebug = string.Format(
                 "{0} {1} {2} {3}",
                 pl.piece.uid,
                 pl.piece.health,
@@ -57,7 +148,7 @@ public class StateManager : MonoBehaviour {
             Debug.Log(plDebug);
             foreach (AttackLog al in pl.attackLogs)
             {
-                String alDebug = string.Format(
+                string alDebug = string.Format(
                    "{0} {1} {2}",
                    pl.piece.uid,
                    al.damage,
@@ -70,27 +161,32 @@ public class StateManager : MonoBehaviour {
 
     class MoveData
     {
-        public Move.Direction direction;
         public Piece piece;
+        public Move.Direction direction;
+
         public Square currentSquare; // piece's current square
         public Square nextSquare; // cached next square
-        public bool isBounce = false;
+
+        public bool isBounce;
 
         public MoveData(Move move, Square currentSquare, Square nextSquare)
         {
-            this.direction = move.direction;
-            this.piece = move.piece;
+            piece = move.piece;
+            direction = move.direction;
+
             this.currentSquare = currentSquare;
             this.nextSquare = nextSquare;
+
+            isBounce = false;
         }
 
         public override string ToString()
         {
-            return String.Format(
+            return string.Format(
                 "[MoveData Piece {0}, currentSq {1}, direction {2}, isBounce {3}]",
                 piece.uid,
                 currentSquare,
-                Move.DirectionToString(direction),
+                direction.ToString(),
                 isBounce
             );
         }
