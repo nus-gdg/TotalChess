@@ -172,7 +172,7 @@ public class StateManager : MonoBehaviour {
                     damage *= 0.05; break;
             }
             if (piece.IsCounteredBy(attackerMoveData.piece)) damage *= 1.2;
-            damage *= piece.health / 100.0;
+            damage *= piece.health / (double)piece.maxHealth;
 
             Piece attacker = attackerMoveData.piece;
             attacker.health -= (damage < 1) ? 1 : (int)damage;   // at least deal 1 dmg

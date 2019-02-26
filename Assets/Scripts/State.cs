@@ -10,6 +10,7 @@ namespace State {
     {
         public enum Type { SWORD, SPEAR, HORSE }
         public Player owner;
+        public int maxHealth;
         public int health;
         public int attack;
         public int def;
@@ -41,6 +42,7 @@ namespace State {
                     this.health = 100; this.attack = 5; this.def = 5;
                     break;
             }
+            this.maxHealth = this.health;
         }
 
         public override int GetHashCode()
