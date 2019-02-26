@@ -44,7 +44,6 @@ GameObject:
   - component: {fileID: 7027669856494882837}
   - component: {fileID: 4334060070902270386}
   - component: {fileID: 597862266799105512}
-  - component: {fileID: 7214197595189131367}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -137,20 +136,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6eef089f1b777d4fa562d4c9e0e4586, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  coordx: 0
+  coordz: 0
   sourceDisplay: {fileID: 7222300455385394553, guid: 885f8b850321228458f797fa45d13d43,
     type: 3}
   selectedDisplay: {fileID: 454199784708709502, guid: d58d9c4590b661147948d6c5c1ceb799,
     type: 3}
---- !u!65 &7214197595189131367
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2227083758457032112}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 0
-  serializedVersion: 2
-  m_Size: {x: 10, y: 10, z: 10}
-  m_Center: {x: 0, y: 5, z: 0}

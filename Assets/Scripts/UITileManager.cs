@@ -10,12 +10,13 @@ public class UITileManager : MonoBehaviour {
     public const int tileSize = 10;
 
 
-	private GameObject[,] tileArray;
-	private GameObject[,] pieceArray;
+    private Guid uuid;
+    private GameObject[,] tileArray;
+    private GameObject[,] pieceArray;
+    private GameObject[,] destPieceArray;
+    private Dictionary<String, Tuple<int, int, GameObject>> pieceCodex; 
 	private Queue<GameObject>[,] moveArray;
 	private Queue<GameObject> moveDir;
-
-
 	private bool selecting;
     private int srcx, srcz, destx, destz;
     // Start is called before the first frame update
@@ -26,19 +27,14 @@ public class UITileManager : MonoBehaviour {
         destz = -1;
 		selecting = false;
 
-        float sx = -tileSize * (x-1) / 2f;
-        float sz = -tileSize * (z-1) / 2f;
 		tileArray = new GameObject[x, z];
 		pieceArray = new GameObject[x, z];
-		moveArray = new Queue<GameObject>[x, z];
-        for (int i = 0; i < x; i++) {
-            for (int j = 0; j < z; j++) {
-                GameObject cur = Instantiate(tilePrefab, new Vector3(sx + i * tileSize, 0, sz + j * tileSize), Quaternion.identity);
-                cur.GetComponentInChildren<UITile>().coordx = i;
-                cur.GetComponentInChildren<UITile>().coordz = j;
-                tileArray[i, j] = cur;
-            }
-        }
+        destPieceArray = new GameObject[x, z];
+        pieceCodex = new Dictionary<string, Tuple<int, int, GameObject>>();
+        moveArray = new Queue<GameObject>[x, z];
+        uuid = Guid.NewGuid();
+
+        CreateTiles();
 
 		
 		moveDir = new Queue<GameObject>();
@@ -50,41 +46,30 @@ public class UITileManager : MonoBehaviour {
     // Update is called once per frame
     void Update() {
         if (Input.GetKeyDown(KeyCode.E)) {
-            Debug.Log("E");
             BounceTowards(1,1,1,2);
         }
 
         if (Input.GetKeyDown(KeyCode.R)) {
-            Debug.Log("R");
             pieceArray[1, 1].GetComponent<UIPiece>().alive = false;
         }
 
-        if (Input.GetKeyDown(KeyCode.Return)){
-			// Todo: code to send to processing
-			for(int i = 0; i < x; i++){
-				for(int j = 0; j < z; j++){
-					if(moveArray[i, j] != null){
-						int lastx = i, lastz = j;
-                        foreach (GameObject c in moveArray[i, j]) {
-                            Debug.Log(111);
-                            c.GetComponentInChildren<UITile>().killGreen(i, j);
-                            MoveFromTo(lastx, lastz, c.GetComponentInChildren<UITile>().coordx, c.GetComponentInChildren<UITile>().coordz) ;
-                            lastx = c.GetComponentInChildren<UITile>().coordx;
-                            lastz = c.GetComponentInChildren<UITile>().coordz;
-                        }
-					}
-				}
-			}
-			moveArray = new Queue<GameObject>[x, z];
-		}
+        if (Input.GetKeyDown(KeyCode.Return)) {
+            FinalizeInput();
+        }
     }
 
+    //methods for moving pieces*********************************
     // use this
     void Kill(int sx, int sz) {
         pieceArray[sx, sz].GetComponent<UIPiece>().alive = false;
         pieceArray[sx, sz] = null;
+        pieceCodex[pieceArray[sx, sz].GetComponent<UIPiece>().puid] = null;
     }
-
+    void Kill(string puid) {
+        int sx = pieceCodex[puid].Item1;
+        int sz = pieceCodex[puid].Item2;
+        Kill(sx, sz);
+    }
     // use this 
     void BounceTowards(int sx, int sz, int dx, int dz) {
         int deltax = sx, deltaz = sz;
@@ -96,28 +81,77 @@ public class UITileManager : MonoBehaviour {
             pieceArray[sx, sz].GetComponent<UIPiece>().bouncingInf = (tileArray[sx, sz].GetComponent<Transform>().position + tileArray[dx, dz].GetComponent<Transform>().position) / 2;
         }
     }
-
+    void BounceTowards(string puid, int dx, int dz) {
+        int sx = pieceCodex[puid].Item1;
+        int sz = pieceCodex[puid].Item2;
+        BounceTowards(sx, sz, dx, dz);
+    }
     // use this 
     void MoveFromTo(int sx, int sz, int dx, int dz) {
-        if (pieceArray[sx, sz] != pieceArray[dx, dz]) {
-            pieceArray[sx, sz].GetComponent<UIPiece>().destination.Enqueue(tileArray[dx, dz]);
-            pieceArray[sx, sz].GetComponent<UIPiece>().moving = true;
-            pieceArray[dx, dz] = pieceArray[sx, sz];
-            pieceArray[sx, sz] = null;
-        }
+        pieceArray[sx, sz].GetComponent<UIPiece>().destination.Enqueue(tileArray[dx, dz]);
+        pieceArray[sx, sz].GetComponent<UIPiece>().moving = true;
+        pieceCodex[pieceArray[sx, sz].GetComponent<UIPiece>().puid] = new Tuple<int, int, GameObject>(dx, dz, pieceArray[sx, sz]);
+        destPieceArray[dx, dz] = pieceArray[sx, sz];
+    }
+    void MoveFromTo(string puid, int dx, int dz) {
+        MoveFromTo(pieceCodex[puid].Item1, pieceCodex[puid].Item2, dx, dz);
     }
 
-    //GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<CreateTiles>().InitializePiece(0, coordx, coordz);
+    void PhasePostProcess() {
+        GameObject[,] newPieceArray = new GameObject[x, z];
+        foreach (KeyValuePair<string, Tuple<int, int, GameObject>> entry in pieceCodex) {
+            newPieceArray[entry.Value.Item1, entry.Value.Item2] = entry.Value.Item3;
+        }
+        pieceArray = newPieceArray;
+        destPieceArray = new GameObject[x, z];
+    }
+    //end methods for moving pieces******************************
+
+    //show damage************************************************
+    void Damage() {
+
+    }
+    //end show damage********************************************
+
+    //UI initialize board and pieces*****************************
+    void CreateTiles() {
+        float sx = -tileSize * (x - 1) / 2f;
+        float sz = -tileSize * (z - 1) / 2f;
+        for (int i = 0; i < x; i++) {
+            for (int j = 0; j < z; j++) {
+                GameObject cur = Instantiate(tilePrefab, new Vector3(sx + i * tileSize, 0, sz + j * tileSize), Quaternion.identity);
+                cur.GetComponentInChildren<UITile>().coordx = i;
+                cur.GetComponentInChildren<UITile>().coordz = j;
+                tileArray[i, j] = cur;
+            }
+        }
+    }
     public void InitializePiece(int typeOfPiece, int x, int z) {
         if (typeOfPiece > piecePrefab.Length) {
             return;
             //die
         }
         pieceArray[x, z] = Instantiate(piecePrefab[typeOfPiece], tileArray[x, z].GetComponent<Transform>().transform.position, Quaternion.identity);
+        String newPuid = uuid + ":(" + typeOfPiece + ")" + x + ":" + z;
+        pieceArray[x, z].GetComponent<UIPiece>().puid = newPuid;
+
+        pieceCodex[newPuid] = new Tuple<int, int, GameObject>(x, z, pieceArray[x, z]);
+        destPieceArray = pieceArray;
     }
+    //end UI initialize board and pieces**************************
 
 
-
+    //UI receive player input*************************************
+    public void TryShowHP(int x, int z) {
+        if (pieceArray[x, z]) {
+            pieceArray[x, z].GetComponent<UIPiece>().ShowHPBar();
+        }
+    }
+    public void TryHideHP(int x, int z) {
+        if (pieceArray[x, z]) {
+            pieceArray[x, z].GetComponent<UIPiece>().HideHPBar();
+        }
+    }
     public void MoveFrom(int x, int z) {
         srcx = x;
 		srcz = z;
@@ -133,10 +167,9 @@ public class UITileManager : MonoBehaviour {
 		}
 		foreach(GameObject c in moveArray[srcx, srcz]){
 			//Debug.Log("1");
-			c.GetComponentInChildren<UITile>().killGreen(x, z);
+			c.GetComponentInChildren<UITile>().KillGreen(x, z);
 		}
     }
-
     public bool MoveUpdateDestination(int x, int z) {
 		//pieceArray[srcx, srcz].GetComponent<UIPiece>().NewDestination(tileArray[destx, destz]);
 		if(selecting){
@@ -146,7 +179,7 @@ public class UITileManager : MonoBehaviour {
 				destx = x;
 				destz = z;
 				moveDir.Enqueue(tileArray[x, z]);
-				tileArray[x, z].GetComponentInChildren<UITile>().makeGreen(srcx, srcz);
+				tileArray[x, z].GetComponentInChildren<UITile>().MakeGreen(srcx, srcz);
 				return true;
 			}else{
 				return false;
@@ -154,7 +187,6 @@ public class UITileManager : MonoBehaviour {
 		}
 		return false;
     }
-
     public void MoveTo() {
         //Debug.Log("(" + destx + ", " + destz + ")");
         //Debug.Log(pieceArray[srcx, srcz]);
@@ -178,7 +210,92 @@ public class UITileManager : MonoBehaviour {
 			selecting = false;
 		}
     }
+    void FinalizeInput() {
+        SendInput();
+    }
+    void SendInput() {
+        /*
+        List<Tuple<String, Queue<Tuple<int, int>>>> dataToBeSent = new List<Tuple<string, Queue<Tuple<int, int>>>>();
+        for (int i = 0; i < x; i++) {
+            for (int j = 0; j < z; j++) {
+                if (moveArray[i, j] != null) {
+                    String curPuid = pieceArray[i, j].GetComponent<UIPiece>().puid;
+                    Tuple<String, Queue<Tuple<int, int>>> curMove = new Tuple<String, Queue<Tuple<int, int>>>(curPuid, new Queue<Tuple<int, int>>());
+                    foreach (GameObject c in moveArray[i, j]) {
+                        UITile t = c.GetComponentInChildren<UITile>();
+                        t.KillGreen(i, j);
+                        curMove.Item2.Enqueue(new Tuple<int, int>(t.coordx, t.coordz));
+                        pieceArray[i, j].GetComponent<UIPiece>().HideHPBar();
+                    }
+                    dataToBeSent.Add(curMove);
+                }
+            }
+        }
+        */
+
+        List<List<Tuple<String, int, int>>> newDataToBeSent = new List<List<Tuple<String, int, int>>>();
+        for (int phase = 1; phase <= 3; phase++) {
+            List<Tuple<String, int, int>> phaseT = new List<Tuple<String, int, int>>();
+            for (int i = 0; i < x; i++) {
+                for (int j = 0; j < z; j++) {
+                    if (moveArray[i, j] != null && moveArray[i, j].Count > 0) {
+                        String curPuid = pieceArray[i, j].GetComponent<UIPiece>().puid;
+                        UITile t = moveArray[i, j].Dequeue().GetComponentInChildren<UITile>();
+                        t.KillGreen(i, j);
+                        phaseT.Add(new Tuple<string, int, int>(curPuid, t.coordx, t.coordz));
+                        pieceArray[i, j].GetComponent<UIPiece>().HideHPBar();
+                    }
+                }
+            }
+            newDataToBeSent.Add(phaseT);
+        }
+
+        moveArray = new Queue<GameObject>[x, z];
+        //test 
+        NewTestProcessInput(newDataToBeSent);
+    }
+    //end UI receive player input**********************************
+
+    //UI process incoming data*************************************
+    void TestProcessInput(List<Tuple<String, Queue<Tuple<int, int>>>> input) {
+        foreach (Tuple<string, Queue<Tuple<int, int>>> pieceMove in input) {
+            foreach (Tuple<int, int> pair in pieceMove.Item2) {
+                MoveFromTo(pieceMove.Item1, pair.Item1, pair.Item2);
+            }
+        }
+    }
+    void NewTestProcessInput(List<List<Tuple<String, int, int>>> input) {
+        foreach (List<Tuple<String, int, int>> phase in input) {
+            foreach (Tuple<String, int, int> move in phase) {
+                MoveFromTo(move.Item1, move.Item2, move.Item3);
+            }
+            PhasePostProcess();
+        }
+    }
+    /*
+     * List<Tuple<string, Queue<Tuple<string, int, int>>>>
+     * List<Tuple<puid, Queue<Tuple<move/bounce/die, int, int>>>>
+     * */
+    void ProcessInput(List<Tuple<string, Queue<Tuple<string, int, int>>>> input) {
+        foreach(Tuple<string, Queue<Tuple<string, int, int>>> pieceMove in input) {
+            foreach (Tuple<string, int, int> inner in pieceMove.Item2) {
+                switch (inner.Item1) {
+                    case "move":
+                        MoveFromTo(pieceMove.Item1, inner.Item2, inner.Item3);
+                        break;
+                    case "bounce":
+                        BounceTowards(pieceMove.Item1, inner.Item2, inner.Item3);
+                        break;
+                    case "die":
+                        Kill(pieceMove.Item1);
+                        break;
+                    case "default":
+                        break;
+                }
+            }
+        }
+    }
+    //end UI process incoming data*********************************
 
 
-    
 }
