@@ -40,7 +40,10 @@ public class UITileManager : MonoBehaviour {
 		moveDir = new Queue<GameObject>();
         // TEST
         GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(0, 1, 1);
-        GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(0, 1, 2);
+        GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(1, 2, 1);
+        GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(0, 3, 1);
+        GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(2, 7, 7);
+        GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>().InitializePiece(1, 6, 7);
     }
 
     // Update is called once per frame
@@ -51,6 +54,10 @@ public class UITileManager : MonoBehaviour {
 
         if (Input.GetKeyDown(KeyCode.R)) {
             pieceArray[1, 1].GetComponent<UIPiece>().alive = false;
+        }
+
+        if (Input.GetKeyDown(KeyCode.F)) {
+            pieceArray[1, 1].GetComponent<UIPiece>().TakeDamage(15, UIPiece.DAMAGE_GANKED4);
         }
 
         if (Input.GetKeyDown(KeyCode.Return)) {
@@ -214,25 +221,6 @@ public class UITileManager : MonoBehaviour {
         SendInput();
     }
     void SendInput() {
-        /*
-        List<Tuple<String, Queue<Tuple<int, int>>>> dataToBeSent = new List<Tuple<string, Queue<Tuple<int, int>>>>();
-        for (int i = 0; i < x; i++) {
-            for (int j = 0; j < z; j++) {
-                if (moveArray[i, j] != null) {
-                    String curPuid = pieceArray[i, j].GetComponent<UIPiece>().puid;
-                    Tuple<String, Queue<Tuple<int, int>>> curMove = new Tuple<String, Queue<Tuple<int, int>>>(curPuid, new Queue<Tuple<int, int>>());
-                    foreach (GameObject c in moveArray[i, j]) {
-                        UITile t = c.GetComponentInChildren<UITile>();
-                        t.KillGreen(i, j);
-                        curMove.Item2.Enqueue(new Tuple<int, int>(t.coordx, t.coordz));
-                        pieceArray[i, j].GetComponent<UIPiece>().HideHPBar();
-                    }
-                    dataToBeSent.Add(curMove);
-                }
-            }
-        }
-        */
-
         List<List<Tuple<String, int, int>>> newDataToBeSent = new List<List<Tuple<String, int, int>>>();
         for (int phase = 1; phase <= 3; phase++) {
             List<Tuple<String, int, int>> phaseT = new List<Tuple<String, int, int>>();
@@ -257,13 +245,7 @@ public class UITileManager : MonoBehaviour {
     //end UI receive player input**********************************
 
     //UI process incoming data*************************************
-    void TestProcessInput(List<Tuple<String, Queue<Tuple<int, int>>>> input) {
-        foreach (Tuple<string, Queue<Tuple<int, int>>> pieceMove in input) {
-            foreach (Tuple<int, int> pair in pieceMove.Item2) {
-                MoveFromTo(pieceMove.Item1, pair.Item1, pair.Item2);
-            }
-        }
-    }
+    // use this now
     void NewTestProcessInput(List<List<Tuple<String, int, int>>> input) {
         foreach (List<Tuple<String, int, int>> phase in input) {
             foreach (Tuple<String, int, int> move in phase) {
@@ -272,10 +254,6 @@ public class UITileManager : MonoBehaviour {
             PhasePostProcess();
         }
     }
-    /*
-     * List<Tuple<string, Queue<Tuple<string, int, int>>>>
-     * List<Tuple<puid, Queue<Tuple<move/bounce/die, int, int>>>>
-     * */
     void ProcessInput(List<Tuple<string, Queue<Tuple<string, int, int>>>> input) {
         foreach(Tuple<string, Queue<Tuple<string, int, int>>> pieceMove in input) {
             foreach (Tuple<string, int, int> inner in pieceMove.Item2) {

@@ -46,7 +46,7 @@ public class UICameraControl : MonoBehaviour {
     }
 
     void ClampCameraDistance(float inc) {
-        scale = Mathf.Clamp(scale + inc, .5f, 1.25f);
+        scale = Mathf.Clamp(scale + inc, .6f, 1.25f);
     }
 
     void ClampCameraHeight(float inc) {
@@ -55,6 +55,6 @@ public class UICameraControl : MonoBehaviour {
 
     void UpdateCamera() {
         this.GetComponent<Transform>().position = scale * (new Vector3(Mathf.Sin(angle) * distanceFromCenter, heightFromCenter, Mathf.Cos(angle) * distanceFromCenter));
-        this.GetComponent<Transform>().LookAt(new Vector3(0, 1, 0));
+        this.GetComponent<Transform>().LookAt(new Vector3(0, -10, 0));
     }
 }

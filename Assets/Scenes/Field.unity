@@ -155,12 +155,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8eb0292923518fe4cb96e8676d9a9333, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  x: 8
-  z: 8
+  x: 16
+  z: 16
   tilePrefab: {fileID: 1358726119570559416, guid: 1833cffa2e70bfa4a9ee0831e50aeeec,
     type: 3}
   piecePrefab:
   - {fileID: 1984220589852182173, guid: dc178c21a2a17274387825468e239881, type: 3}
+  - {fileID: 6235612729560694879, guid: a2bc89ed939ab1a4c9be180b27820f28, type: 3}
+  - {fileID: 7646614669700322886, guid: 60dbaed12bfc8684ca19ab4f4012d99d, type: 3}
 --- !u!1 &1092361311
 GameObject:
   m_ObjectHideFlags: 0
