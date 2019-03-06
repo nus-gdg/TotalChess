@@ -181,10 +181,10 @@ namespace State
             switch (direction)
             {
                 case Move.Direction.UP:
-                    row = currentSquare.row > 0 ? currentSquare.row - 1 : 0;
+                    row = currentSquare.row < numRows - 1 ? currentSquare.row + 1 : numRows - 1;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.DOWN:
-                    row = currentSquare.row < numRows - 1 ? currentSquare.row + 1 : numRows - 1;
+                    row = currentSquare.row > 0 ? currentSquare.row - 1 : 0;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.LEFT:
                     col = currentSquare.col > 0 ? currentSquare.col - 1 : 0;
