@@ -48,6 +48,19 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
         progressLabel.SetActive(false);
         button.SetActive(true);
+        PhotonNetwork.NickName = RandomNickname(20);
+        Debug.Log(PhotonNetwork.NickName);
+    }
+
+    private static string RandomNickname(int length)
+    {
+        System.Random rnd = new System.Random();
+        var str = "";
+        for (var i = 0; i < length; i++)
+        {
+            str += ((char)(rnd.Next(1, 26) + 64)).ToString();
+        }
+        return str;
     }
 
     /// <summary>
