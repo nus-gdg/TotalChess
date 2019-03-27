@@ -10,6 +10,8 @@ public class StateManager : MonoBehaviour {
 
     // FOR TESTING:
     public Board board;
+    public List<Board> moveHistory;
+
 
     /* FOR TESTING:
      *  | 0  | 1  | 2  | 3  | 4  | 5  |
@@ -27,6 +29,8 @@ public class StateManager : MonoBehaviour {
     {
         CreatePieces(Player.A, numPieces);
         CreatePieces(Player.B, numPieces);
+
+        moveHistory.Add(new Board(board));
     }
 
     public void CreatePieces(Player player, int numPieces)
@@ -80,43 +84,42 @@ public class StateManager : MonoBehaviour {
     public void CreateBoard(int rows = 6, int cols = 6)
     {
         board = new Board(rows, cols);
+        moveHistory = new List<Board>();
     }
 
-    public void Start()
-    {
-        CreateBoard(6, 6);
+    //public void Start()
+    //{
+    //    CreateBoard(6, 6);
 
-        CreatePieces(3);
+    //    CreatePieces(3);
 
-        //Debug.Log(string.Join(" , ", board.GetPieces()));
+    //    //Run
+    //    CalculateNextState();
+    //}
 
-        //Run
-        CalculateNextState();
-    }
+    //public Move[] PlayMoves()
+    //{
+    //    Move[] moves = new Move[board.GetPieces().Count];
 
-    public Move[] PlayMoves()
-    {
-        Move[] moves = new Move[board.GetPieces().Count];
+    //    int i = 0;
 
-        int i = 0;
+    //    foreach (Piece piece in board.GetPieces())
+    //    {
+    //        moves[i] = ChooseMove(piece);
+    //        i++;
+    //    }
 
-        foreach (Piece piece in board.GetPieces())
-        {
-            moves[i] = ChooseMove(piece);
-            i++;
-        }
-
-        return moves;
-    }
+    //    return moves;
+    //}
 
     public Move ChooseMove(Piece piece)
     {
         //STUB
         switch (piece.uid)
         {
-            case "A1": return piece.Move();
-            case "A2": return piece.MoveRight();
-            case "A3": return piece.MoveDown();
+            case "A1": return piece.MoveRight();
+            case "A2": return piece.MoveLeft();
+            case "A3": return piece.MoveRight();
 
             case "B1": return piece.MoveUp();
             case "B2": return piece.MoveUp();
@@ -126,10 +129,8 @@ public class StateManager : MonoBehaviour {
         }
     }
 
-    public void CalculateNextState()
+    public void CalculateNextState(Move[] moves)
     {
-        Move[] moves = PlayMoves();
-
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
 
@@ -157,6 +158,18 @@ public class StateManager : MonoBehaviour {
                 Debug.Log(alDebug);
             }
         }
+
+        board.ResetPositions();
+
+        for (int i = 0; i < resolvedMoveDatas.Length; i++)
+        {
+            Piece piece = resolvedMoveDatas[i].piece;
+            Square nextSquare = resolvedMoveDatas[i].currentSquare;
+
+            board.SetPieceAtSquare(new Piece(piece), nextSquare);
+        }
+
+        moveHistory.Add(new Board(board));
     }
 
     class MoveData
@@ -333,8 +346,8 @@ public class StateManager : MonoBehaviour {
         validMoveIndices.ForEach(validMoveIndex =>
         {
             MoveData moveData = moveMetaDatas[validMoveIndex];
-            Debug.Assert(!IsSquareLocked(moveData.nextSquare)); // sanity check
-            Debug.Assert(!moveData.isBounce); // sanity check
+            //Debug.Assert(!IsSquareLocked(moveData.nextSquare)); // sanity check
+            //Debug.Assert(!moveData.isBounce); // sanity check
             moveData.currentSquare = moveData.nextSquare;
             moveData.direction = Move.Direction.NONE;
         });

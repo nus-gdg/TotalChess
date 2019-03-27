@@ -49,3 +49,6 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
+
+#Mac Junk
+*.DS_Store

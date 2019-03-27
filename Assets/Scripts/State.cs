@@ -18,6 +18,7 @@ public static class State {
 
         public Type type;
 
+        public int maxHealth = 100;
         public int health = 100;
         public int attack = 5;
         public int def = 5;
@@ -27,6 +28,18 @@ public static class State {
             this.uid = uid;
             this.owner = owner;
             this.type = type;
+        }
+
+        public Piece(Piece piece)
+        {
+            uid = piece.uid;
+            owner = piece.owner;
+            type = piece.type;
+
+            maxHealth = piece.maxHealth;
+            health = piece.health;
+            attack = piece.attack;
+            def = piece.def;
         }
 
         public override int GetHashCode()
@@ -61,7 +74,7 @@ public static class State {
 
         public Move MakeMove(Move.Direction direction)
         {
-            return new Move(this, direction);
+            return new Move(new Piece(this), direction);
         }
 
         public Move MoveUp()
@@ -142,6 +155,12 @@ public static class State {
             this.col = col;
         }
 
+        public Square(Square square)
+        {
+            row = square.row;
+            col = square.col;
+        }
+
         public override int GetHashCode()
         {
             return row * 31 + col;
@@ -185,6 +204,14 @@ public static class State {
         {
             this.rows = rows;
             this.cols = cols;
+        }
+
+        public Board(Board board)
+        {
+            rows = board.rows;
+            cols = board.cols;
+            pieceToSquare = new Dictionary<Piece, Square>(board.pieceToSquare);
+            squareToPiece = new Dictionary<Square, Piece>(board.squareToPiece);
         }
 
         public Square NextSquare(Square currentSquare, Move.Direction direction)
@@ -240,7 +267,32 @@ public static class State {
 
         public List<Piece> GetPieces()
         {
-            return pieceToSquare.Keys.ToList();
+            List<Piece> pieces = new List<Piece>();
+
+            foreach (Piece piece in pieceToSquare.Keys.ToList())
+            {
+                pieces.Add(new Piece(piece));
+            }
+
+            return pieces;
+        }
+
+        public override string ToString()
+        {
+            string message = "";
+
+            foreach (Piece piece in GetPieces())
+            {
+                message += piece.uid + " " + GetCurrentSquare(piece);
+            }
+
+            return message;
+        }
+
+        public void ResetPositions()
+        {
+            pieceToSquare = new Dictionary<Piece, Square>();
+            squareToPiece = new Dictionary<Square, Piece>();
         }
     }
 
