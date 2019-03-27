@@ -5,72 +5,83 @@ using State;
 using System;
 using System.Linq;
 
-public class StateManager : MonoBehaviour {
+public class StateManager : MonoBehaviour
+{
+    private NetworkEventManager networkManager;
     HashSet<Square> lockedSquares = new HashSet<Square>();
-    // FOR TESTING:
-    Board board = new Board(6, 6);                   //  | 0  | 1  | 2  | 3  | 4  | 5  |
-                                                     //---------------------------------
-    Piece A_PIECE_1 = new Piece("uida1", Player.A);  //0 | A1 |    |    |    |    |    |
-    Piece A_PIECE_2 = new Piece("uida2", Player.A);  //1 |    |    |    | A3 |    |    |
-    Piece A_PIECE_3 = new Piece("uida3", Player.A);  //2 |    |    | A2 | B2 |    |    |
-                                                     //3 |    |    | B1 |    | B3 |    |
-    Piece B_PIECE_1 = new Piece("uidb1", Player.B);  //4 |    |    |    |    |    |    |
-    Piece B_PIECE_2 = new Piece("uidb2", Player.B);  //5 |    |    |    |    |    |    |
-    Piece B_PIECE_3 = new Piece("uidb3", Player.B);  //---------------------------------
+    public Board board;
+    Move[][] otherTurn = null;
 
     void Start()
     {
-        board.SetPieceAtSquare(A_PIECE_1, new Square(0, 0));
-        board.SetPieceAtSquare(A_PIECE_2, new Square(2, 2));
-        board.SetPieceAtSquare(A_PIECE_3, new Square(1, 3));
-        board.SetPieceAtSquare(B_PIECE_1, new Square(3, 2));
-        board.SetPieceAtSquare(B_PIECE_2, new Square(2, 3));
-        board.SetPieceAtSquare(B_PIECE_3, new Square(3, 4));
-
-        Move[] moves = new Move[] {
-            new Move(A_PIECE_1),
-            new Move(A_PIECE_2, Move.Direction.RIGHT),
-            new Move(A_PIECE_3, Move.Direction.DOWN),
-            new Move(B_PIECE_1, Move.Direction.UP),
-            new Move(B_PIECE_2, Move.Direction.UP),
-            new Move(B_PIECE_3, Move.Direction.LEFT),
-        };
-
-        // 3 phases for 1 turn, for now just repeat moves
-        CalculateNextPhase(moves);
-        CalculateNextPhase(moves);
-        CalculateNextPhase(moves);
+        networkManager = GetComponent<NetworkEventManager>();
     }
 
-    void CalculateNextPhase(Move[] moves)
+    void OnEnable()
+    {
+        NetworkEventManager.OnReceiveTurn += OnReceiveTurn;
+    }
+
+    void OnDisable()
+    {
+        NetworkEventManager.OnReceiveTurn -= OnReceiveTurn;
+    }
+
+    public void OnReceiveTurn(Move[][] turn)
+    {
+        if (otherTurn == null)
+        {
+            otherTurn = turn;
+            return;
+        }
+        Debug.Assert(otherTurn[0][0].piece.owner != turn[0][0].piece.owner); // just for checking, definitely will have error in the future
+        TurnLog turnLog = new TurnLog();
+        List<PhaseLog[]> tempPhasesList = new List<PhaseLog[]>();
+        for (int i = 0; i < 3; i++)
+        {
+            Move[] otherMoves = otherTurn[0];
+            Move[] moves = turn[0];
+            Move[] allMoves = new Move[moves.Length + otherMoves.Length];
+            moves.CopyTo(allMoves, 0);
+            otherMoves.CopyTo(allMoves, moves.Length);
+            PhaseLog[] phaseLogs = CalculateNextPhase(allMoves);
+            tempPhasesList.Add(phaseLogs);
+        }
+        turnLog.phases = tempPhasesList.ToArray();
+        otherTurn = null;
+        networkManager.SendTurnLog(turnLog);
+    }
+
+    PhaseLog[] CalculateNextPhase(Move[] moves)
     {
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
         UpdateBoard(board, phaseLogs);
 
-        Debug.Log("PL Format: puid, health, combatSq, finalSq");
-        Debug.Log("Attack Format: puid, damage, direction");
-        foreach (PhaseLog pl in phaseLogs)
-        {
-            String plDebug = string.Format(
-                "{0} {1} {2} {3}",
-                pl.piece.uid,
-                pl.piece.health,
-                pl.moveLog.combatSquare,
-                pl.moveLog.finalSquare
-            );
-            Debug.Log(plDebug);
-            foreach (AttackLog al in pl.attackLogs)
-            {
-                String alDebug = string.Format(
-                   "{0} {1} {2}",
-                   pl.piece.uid,
-                   al.damage,
-                   Move.DirectionToString(al.direction)
-               );
-                Debug.Log(alDebug);
-            }
-        }
+        //Debug.Log("PL Format: puid, health, combatSq, finalSq");
+        //Debug.Log("Attack Format: puid, damage, direction");
+        //foreach (PhaseLog pl in phaseLogs)
+        //{
+        //    String plDebug = string.Format(
+        //        "{0} {1} {2} {3}",
+        //        pl.piece.uid,
+        //        pl.piece.health,
+        //        pl.moveLog.combatSquare,
+        //        pl.moveLog.finalSquare
+        //    );
+        //    Debug.Log(plDebug);
+        //    foreach (AttackLog al in pl.attackLogs)
+        //    {
+        //        String alDebug = string.Format(
+        //           "{0} {1} {2}",
+        //           pl.piece.uid,
+        //           al.damage,
+        //           Move.DirectionToString(al.direction)
+        //       );
+        //        Debug.Log(alDebug);
+        //    }
+        //}
+        return phaseLogs;
     }
 
     class MoveData
@@ -163,7 +174,7 @@ public class StateManager : MonoBehaviour {
             List<AttackLog> attackLogs = ApplyAndRecordDamage(piece, attackedBy);
             Square finalSquare = moveData.isBounce ? moveData.currentSquare : combatSquare;
             MoveLog moveLog = new MoveLog(combatSquare, finalSquare);
-            PhaseLog phaseLog = new PhaseLog(piece, moveLog, attackLogs);
+            PhaseLog phaseLog = new PhaseLog(piece, moveLog, attackLogs.ToArray());
             phaseLogs[i] = phaseLog;
         }
 
@@ -184,9 +195,9 @@ public class StateManager : MonoBehaviour {
             switch (attackerMoveDatas.Count)
             {
                 case 2:   // 40% on 2 enemies
-                    damage *= 0.4;  break;
+                    damage *= 0.4; break;
                 case 3:   // 20% on 3 enemies
-                    damage *= 0.2;  break;
+                    damage *= 0.2; break;
                 case 4:   // 5% on 4 enemies
                     damage *= 0.05; break;
             }

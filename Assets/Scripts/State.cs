@@ -1,12 +1,15 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace State {
+namespace State
+{
 
-    enum Player { A, B }
+    public enum Player { A, B }
 
-    class Piece
+    [Serializable]
+    public class Piece
     {
         public enum Type { SWORD, SPEAR, HORSE }
         public Player owner;
@@ -27,7 +30,7 @@ namespace State {
             this.uid = uid;
             this.owner = owner;
             this.type = type;
-            switch(type)
+            switch (type)
             {
                 case Type.SWORD:
                     this.health = 100; this.attack = 5; this.def = 5;
@@ -79,7 +82,8 @@ namespace State {
         }
     }
 
-    class Move
+    [Serializable]
+    public class Move
     {
         public enum Direction { UP, DOWN, LEFT, RIGHT, NONE }
         public Piece piece;
@@ -95,12 +99,12 @@ namespace State {
         {
             switch (direction)
             {
-                case Direction.UP:    return "UP";
-                case Direction.DOWN:  return "DOWN";
-                case Direction.LEFT:  return "LEFT";
+                case Direction.UP: return "UP";
+                case Direction.DOWN: return "DOWN";
+                case Direction.LEFT: return "LEFT";
                 case Direction.RIGHT: return "RIGHT";
-                case Direction.NONE:  return "NONE";
-                default:              return "NONE";
+                case Direction.NONE: return "NONE";
+                default: return "NONE";
             }
         }
 
@@ -108,17 +112,18 @@ namespace State {
         {
             switch (direction)
             {
-                case Direction.UP:    return Direction.DOWN;
-                case Direction.DOWN:  return Direction.UP;
-                case Direction.LEFT:  return Direction.RIGHT;
+                case Direction.UP: return Direction.DOWN;
+                case Direction.DOWN: return Direction.UP;
+                case Direction.LEFT: return Direction.RIGHT;
                 case Direction.RIGHT: return Direction.LEFT;
-                case Direction.NONE:  return Direction.NONE;
-                default:              return Direction.NONE;
+                case Direction.NONE: return Direction.NONE;
+                default: return Direction.NONE;
             }
         }
     }
 
-    class Square
+    [Serializable]
+    public class Square
     {
         public int row;
         public int col;
@@ -139,7 +144,7 @@ namespace State {
                 return false;
             }
 
-            return this == (Square) obj;
+            return this == (Square)obj;
         }
 
         public static bool operator ==(Square a, Square b)
@@ -158,7 +163,7 @@ namespace State {
         }
     }
 
-    class Board
+    public class Board
     {
         int numRows;
         int numCols;
@@ -176,10 +181,10 @@ namespace State {
             switch (direction)
             {
                 case Move.Direction.UP:
-                    row = currentSquare.row > 0 ? currentSquare.row - 1 : 0;
+                    row = currentSquare.row < numRows - 1 ? currentSquare.row + 1 : numRows - 1;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.DOWN:
-                    row = currentSquare.row < numRows -1 ? currentSquare.row + 1 : numRows - 1;
+                    row = currentSquare.row > 0 ? currentSquare.row - 1 : 0;
                     return new Square(row, currentSquare.col);
                 case Move.Direction.LEFT:
                     col = currentSquare.col > 0 ? currentSquare.col - 1 : 0;
