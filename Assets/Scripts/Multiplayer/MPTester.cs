@@ -13,14 +13,8 @@ public class MPTester : MonoBehaviour
     private StateManager stateManager;
     private NetworkEventManager networkManager;
     private Renderer renderer;
-
-    Piece A_PIECE_1 = new Piece("uida1", Player.A);
-    Piece A_PIECE_2 = new Piece("uida2", Player.A);
-    Piece A_PIECE_3 = new Piece("uida3", Player.A);
-
-    Piece B_PIECE_1 = new Piece("uidb1", Player.B);
-    Piece B_PIECE_2 = new Piece("uidb2", Player.B);
-    Piece B_PIECE_3 = new Piece("uidb3", Player.B);
+    private UITileManager utm;
+    private List<Piece> pieces = new List<Piece>();
 
     // Start is called before the first frame update
     void Start()
@@ -28,10 +22,12 @@ public class MPTester : MonoBehaviour
         stateManager = GetComponent<StateManager>();
         networkManager = GetComponent<NetworkEventManager>();
         renderer = GetComponent<Renderer>();
-        if (networkManager.IsMasterClient())
-        {
-            SetUpDummyBoard();
-        }
+        utm = GameObject.FindGameObjectsWithTag("TileManager")[0].GetComponent<UITileManager>();
+
+        //if (networkManager.IsMasterClient())
+        //{
+        SetUpDummyBoard();
+        //}
     }
 
     void OnEnable()
@@ -48,16 +44,34 @@ public class MPTester : MonoBehaviour
         NetworkEventManager.OnReceiveTurnLog -= OnReceiveTurnLog;
     }
 
+    void SetPieceAtSquare(Player player, Square square, string puid)
+    {
+        int piecetype = player == Player.A ? 0 : 1;
+        utm.InitializePiece(piecetype, square.col, square.row, puid);
+        Piece piece = new Piece(puid, player);
+        pieces.Add(piece);
+        Debug.Log(square);
+        stateManager.board.SetPieceAtSquare(piece, square);
+    }
+
     void SetUpDummyBoard()
     {
-        stateManager.board = new Board(6, 6);                             //  | 0  | 1  | 2  | 3  | 4  | 5  |
-        stateManager.board.SetPieceAtSquare(A_PIECE_1, new Square(0, 0)); //0 | A1 |    |    |    |    |    |
-        stateManager.board.SetPieceAtSquare(A_PIECE_2, new Square(2, 2)); //1 |    |    |    | A3 |    |    |
-        stateManager.board.SetPieceAtSquare(A_PIECE_3, new Square(1, 3)); //2 |    |    | A2 | B2 |    |    |
-        stateManager.board.SetPieceAtSquare(B_PIECE_1, new Square(3, 2)); //3 |    |    | B1 |    | B3 |    |
-        stateManager.board.SetPieceAtSquare(B_PIECE_2, new Square(2, 3)); //4 |    |    |    |    |    |    |
-        stateManager.board.SetPieceAtSquare(B_PIECE_3, new Square(3, 4)); //5 |    |    |    |    |    |    |
-    }                                                                     //---------------------------------
+        stateManager.board = new Board(6, 6);
+        SetPieceAtSquare(Player.A, new Square(0, 0), "A1");
+        SetPieceAtSquare(Player.A, new Square(2, 2), "A2");
+        SetPieceAtSquare(Player.A, new Square(1, 3), "A3");
+        SetPieceAtSquare(Player.B, new Square(3, 2), "B1");
+        SetPieceAtSquare(Player.B, new Square(2, 3), "B2");
+        SetPieceAtSquare(Player.B, new Square(3, 4), "B3");
+
+        //5 |    |    |    |    |    |    |
+        //4 |    |    |    |    |    |    |
+        //3 |    |    | B1 |    | B3 |    |
+        //2 |    |    | A2 | B2 |    |    |
+        //1 |    |    |    | A3 |    |    |
+        //0 | A1 |    |    |    |    |    |
+        //  | 0  | 1  | 2  | 3  | 4  | 5  |
+    }
 
     void OnGameStart()
     {
@@ -65,8 +79,9 @@ public class MPTester : MonoBehaviour
         {
             renderer.material.color = new Color(1.0f, 0, 0); // for debug
             Move[] movesToSend = {
-                        new Move(A_PIECE_1, Move.Direction.UP),
-                        new Move(A_PIECE_2, Move.Direction.DOWN),
+                        new Move(pieces[0], Move.Direction.UP),
+                        new Move(pieces[1], Move.Direction.LEFT),
+                        new Move(pieces[2], Move.Direction.NONE),
                     };
             networkManager.SendTurn(new List<Move[]> { movesToSend, movesToSend, movesToSend });
         }
@@ -74,8 +89,9 @@ public class MPTester : MonoBehaviour
         {
             renderer.material.color = new Color(0, 0, 1.0f); // for debug
             Move[] movesToSend = {
-                        new Move(B_PIECE_1, Move.Direction.UP),
-                        new Move(B_PIECE_2, Move.Direction.DOWN),
+                        new Move(pieces[3], Move.Direction.DOWN),
+                        new Move(pieces[4], Move.Direction.DOWN),
+                        new Move(pieces[5], Move.Direction.NONE),
                     }; // debug as well
             networkManager.SendTurn(new List<Move[]> { movesToSend, movesToSend, movesToSend });
         }
