@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using State;
+using static State;
 using Log;
 
 [RequireComponent(typeof(StateManager))]

@@ -1,13 +1,14 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using State;
+using static State;
 
 namespace Log
 {
     // Logs for UI to display a turn.
     // These logs will be transmitted over network. Should be kept lightweight
+
     [Serializable]
     public class TurnLog
     {

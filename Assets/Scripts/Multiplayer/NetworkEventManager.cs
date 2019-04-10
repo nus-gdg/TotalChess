@@ -9,7 +9,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 
-using State;
+using static State;
 using Log;
 
 public class NetworkEventManager : MonoBehaviourPunCallbacks, IOnEventCallback

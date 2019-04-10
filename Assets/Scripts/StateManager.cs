@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using Log;
-using State;
+using static State;
 using System;
 using System.Linq;
 
@@ -9,8 +9,11 @@ public class StateManager : MonoBehaviour
 {
     private NetworkEventManager networkManager;
     HashSet<Square> lockedSquares = new HashSet<Square>();
+
     public Board board;
     Move[][] otherTurn = null;
+    // FOR TESTING:
+    public List<Board> moveHistory;
 
     void Start()
     {
@@ -25,6 +28,86 @@ public class StateManager : MonoBehaviour
     void OnDisable()
     {
         NetworkEventManager.OnReceiveTurn -= OnReceiveTurn;
+    }
+
+    public void CreatePieces(int numPieces)//sets up creating numbered pieces for 2 players
+    {
+        CreatePieces(Player.A, numPieces);//uses the overloaded method
+        CreatePieces(Player.B, numPieces);//uses the overloaded method
+
+        moveHistory.Add(new Board(board));
+    }
+
+    public void CreatePieces(Player player, int numPieces)//recursively create for 1 player, overload
+    {
+        Piece piece;
+        Square square;
+        //create given number of pieces to the player
+        for (int pieceNumber = 1; pieceNumber <= numPieces; pieceNumber++)
+        {
+            //Create Player A pieces
+            piece = ChoosePiece(pieceNumber, player);//create piece
+            square = ChooseSquare(piece);//create a square for the piece to place
+
+            board.SetPieceAtSquare(piece, square);//set piece at a destinated square
+            //Debug.Log(string.Format("{0} {1}", piece, square));
+        }
+    }
+
+    public Piece ChoosePiece(int pieceNumber, Player player)//piecenumber is from the for loop, player is from player(Player.A,Player.B)
+    {
+        //STUB
+        Piece.Type type = ChooseType();
+
+        return new Piece(player.ToString() + pieceNumber, player, type);
+    }
+
+    public Piece.Type ChooseType()
+    {
+        //STUB
+        return Piece.Type.SWORD;
+    }
+
+    //Actual will not contain @param piece
+    //set the pieces to the destinated square
+    public Square ChooseSquare(Piece piece)
+    {
+        //STUB
+        switch (piece.uid)
+        {
+            case "A1": return new Square(0, 0);
+            case "A2": return new Square(2, 2);
+            case "A3": return new Square(1, 3);
+
+            case "B1": return new Square(3, 2);
+            case "B2": return new Square(2, 3);
+            case "B3": return new Square(3, 4);
+
+            default: return null;
+        }
+    }
+
+    public void CreateBoard(int rows = 6, int cols = 6)
+    {
+        board = new Board(rows, cols);
+        moveHistory = new List<Board>();
+    }
+
+    public Move ChooseMove(Piece piece)
+    {
+        //STUB
+        switch (piece.uid)
+        {
+            case "A1": return piece.MoveRight();
+            case "A2": return piece.MoveLeft();
+            case "A3": return piece.MoveRight();
+
+            case "B1": return piece.MoveUp();
+            case "B2": return piece.MoveUp();
+            case "B3": return piece.MoveLeft();
+
+            default: return null;
+        }
     }
 
     public void OnReceiveTurn(Move[][] turn)
@@ -52,35 +135,23 @@ public class StateManager : MonoBehaviour
         networkManager.SendTurnLog(turnLog);
     }
 
-    PhaseLog[] CalculateNextPhase(Move[] moves)
+
+    public PhaseLog[] CalculateNextPhase(Move[] moves)
     {
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
-        UpdateBoard(board, phaseLogs);
+        // potential optimization
+        board.ResetPositions();
+        for (int i = 0; i < resolvedMoveDatas.Length; i++)
+        {
+            Piece piece = resolvedMoveDatas[i].piece;
+            Square nextSquare = resolvedMoveDatas[i].currentSquare;
 
-        //Debug.Log("PL Format: puid, health, combatSq, finalSq");
-        //Debug.Log("Attack Format: puid, damage, direction");
-        //foreach (PhaseLog pl in phaseLogs)
-        //{
-        //    String plDebug = string.Format(
-        //        "{0} {1} {2} {3}",
-        //        pl.piece.uid,
-        //        pl.piece.health,
-        //        pl.moveLog.combatSquare,
-        //        pl.moveLog.finalSquare
-        //    );
-        //    Debug.Log(plDebug);
-        //    foreach (AttackLog al in pl.attackLogs)
-        //    {
-        //        String alDebug = string.Format(
-        //           "{0} {1} {2}",
-        //           pl.piece.uid,
-        //           al.damage,
-        //           Move.DirectionToString(al.direction)
-        //       );
-        //        Debug.Log(alDebug);
-        //    }
-        //}
+            board.SetPieceAtSquare(new Piece(piece), nextSquare);
+        }
+        moveHistory.Add(new Board(board));
+        UpdateBoard(board, phaseLogs);
+        // end: potential optimization
         return phaseLogs;
     }
 
