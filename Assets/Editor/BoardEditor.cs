@@ -162,13 +162,15 @@ public class BoardEditor : Editor
         DisplayBoard();
 
         ToolPieces();
+
     }
 
     #region Tools: Pieces Options
 
     static List<Piece> pieces;
     static List<Move> moves;
-
+    static int[] prow = new int[] { 0, 0, 0, 0, 0, 0 };//input fields  //make array here and set to null(empty list)
+    static int[] pcol = new int[] { 0, 0, 0, 0, 0, 0 };//input fields
     #endregion
 
     private void ToolPieces()
@@ -184,14 +186,15 @@ public class BoardEditor : Editor
                 Space();
 
                 BeginVertical(layoutStyle);
-
+                //put stuff here
+                
                 foreach (Move move in moves)
                 {
                     DisplayPieceInfo(move);
 
                     Space();
                 }
-
+                DrawPiece();
                 EndVertical();
             }
         }
@@ -462,11 +465,11 @@ public class BoardEditor : Editor
             {
                 currentBoard = 0;
             }
-            
+
             stateManager.board = new Board(stateManager.moveHistory[currentBoard]);
             board = stateManager.board;
 
-            foreach(Piece piece in board.GetPieces())
+            foreach (Piece piece in board.GetPieces())
                 Debug.Log(string.Format("{0} >>> {1}", piece, piece.health));
 
             pieces = board.GetPieces();
@@ -482,7 +485,7 @@ public class BoardEditor : Editor
                              GUILayout.Height(32)))
         {
             int numMovePhases = 1;
-             
+
             for (int i = 0; i < numMovePhases; i++)
                 stateManager.CalculateNextState(moves.ToArray());
 
@@ -492,6 +495,32 @@ public class BoardEditor : Editor
     }
 
     #endregion
+
+    void DrawPiece()
+    {
+        //pieces is a List contain all pieces
+        for (int i = 0; i < pieces.Count; i++)
+        {
+            
+            
+        }
+        for (int i = 0; i < pieces.Count; i++)// go thru all the pieces 1 by 1
+        {
+            BeginHorizontal();
+            LabelField("Piece " + (pieces[i].uid) + ":", GUILayout.Width(60));
+            prow[i] = board.GetCurrentSquare(pieces[i]).row;
+            pcol[i] = board.GetCurrentSquare(pieces[i]).col;
+            prow[i] = IntField(board.GetCurrentSquare(pieces[i]).row + "   ", prow[i]);//set piece's row
+            pcol[i] = IntField(board.GetCurrentSquare(pieces[i]).col + "   ", pcol[i]);//set piece's col
+            Square temp = board.GetCurrentSquare(pieces[i]);
+            temp.row = prow[i];
+            temp.col = pcol[i];
+            board.SetPieceAtSquare(pieces[i], temp);
+            EndHorizontal();
+        }
+
+        //Console.WriteLine("name {0} and place{1}");
+    }
 
     private void Title(string title)
     {

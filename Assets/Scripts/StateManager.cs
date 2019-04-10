@@ -25,31 +25,31 @@ public class StateManager : MonoBehaviour {
      * -------------------------------
      */
 
-    public void CreatePieces(int numPieces)
+    public void CreatePieces(int numPieces)//sets up creating numbered pieces for 2 players
     {
-        CreatePieces(Player.A, numPieces);
-        CreatePieces(Player.B, numPieces);
+        CreatePieces(Player.A, numPieces);//uses the overloaded method 
+        CreatePieces(Player.B, numPieces);//uses the overloaded method
 
         moveHistory.Add(new Board(board));
     }
 
-    public void CreatePieces(Player player, int numPieces)
+    public void CreatePieces(Player player, int numPieces)//recursively create for 1 player, overload
     {
         Piece piece;
         Square square;
-
+        //create given number of pieces to the player
         for (int pieceNumber = 1; pieceNumber <= numPieces; pieceNumber++)
         {
             //Create Player A pieces
-            piece = ChoosePiece(pieceNumber, player);
-            square = ChooseSquare(piece);
+            piece = ChoosePiece(pieceNumber, player);//create piece
+            square = ChooseSquare(piece);//create a square for the piece to place
 
-            board.SetPieceAtSquare(piece, square);
+            board.SetPieceAtSquare(piece, square);//set piece at a destinated square
             //Debug.Log(string.Format("{0} {1}", piece, square));
-        }
+        } 
     }
 
-    public Piece ChoosePiece(int pieceNumber, Player player)
+    public Piece ChoosePiece(int pieceNumber, Player player)//piecenumber is from the for loop, player is from player(Player.A,Player.B)
     {
         //STUB
         Piece.Type type = ChooseType();
@@ -64,6 +64,7 @@ public class StateManager : MonoBehaviour {
     }
 
     //Actual will not contain @param piece
+    //set the pieces to the destinated square
     public Square ChooseSquare(Piece piece)
     {
         //STUB
@@ -90,7 +91,6 @@ public class StateManager : MonoBehaviour {
     //public void Start()
     //{
     //    CreateBoard(6, 6);
-
     //    CreatePieces(3);
 
     //    //Run
