@@ -314,7 +314,7 @@ public class BoardEditor : Editor
             {
                 BeginVertical(layoutStyle);
 
-                for (int row = 0; row < board.rows; row++)
+                for (int row = board.rows; row >= 0; row--)
                 {
                     piece_id = "";
                     boxImage = emptySquare;
