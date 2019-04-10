@@ -187,7 +187,7 @@ public class BoardEditor : Editor
 
                 BeginVertical(layoutStyle);
                 //put stuff here
-                
+
                 foreach (Move move in moves)
                 {
                     DisplayPieceInfo(move);
@@ -487,7 +487,7 @@ public class BoardEditor : Editor
             int numMovePhases = 1;
 
             for (int i = 0; i < numMovePhases; i++)
-                stateManager.CalculateNextState(moves.ToArray());
+                stateManager.CalculateNextPhase(moves.ToArray());
 
             board = stateManager.board;
             pieces = board.GetPieces();
@@ -501,8 +501,8 @@ public class BoardEditor : Editor
         //pieces is a List contain all pieces
         for (int i = 0; i < pieces.Count; i++)
         {
-            
-            
+
+
         }
         for (int i = 0; i < pieces.Count; i++)// go thru all the pieces 1 by 1
         {

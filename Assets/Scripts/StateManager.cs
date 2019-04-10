@@ -1,33 +1,38 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using Log;
 using static State;
 using System;
 using System.Linq;
 
-public class StateManager : MonoBehaviour {
+public class StateManager : MonoBehaviour
+{
+    private NetworkEventManager networkManager;
     HashSet<Square> lockedSquares = new HashSet<Square>();
 
-    // FOR TESTING:
     public Board board;
+    Move[][] otherTurn = null;
+    // FOR TESTING:
     public List<Board> moveHistory;
 
+    void Start()
+    {
+        networkManager = GetComponent<NetworkEventManager>();
+    }
 
-    /* FOR TESTING:
-     *  | 0  | 1  | 2  | 3  | 4  | 5  |
-     * --------------------------------
-     *0 | B2 | A4 |    |    |    |    |
-     *1 | A3 | B1 |    |    |    |    |
-     *2 |    |    |    |    |    | B4 |
-     *3 |    |    | A1 | A2 | B3 |    |
-     *4 |    |    |    |    |    |    |
-     *5 |    |    |    |    |    |    |
-     * -------------------------------
-     */
+    void OnEnable()
+    {
+        NetworkEventManager.OnReceiveTurn += OnReceiveTurn;
+    }
+
+    void OnDisable()
+    {
+        NetworkEventManager.OnReceiveTurn -= OnReceiveTurn;
+    }
 
     public void CreatePieces(int numPieces)//sets up creating numbered pieces for 2 players
     {
-        CreatePieces(Player.A, numPieces);//uses the overloaded method 
+        CreatePieces(Player.A, numPieces);//uses the overloaded method
         CreatePieces(Player.B, numPieces);//uses the overloaded method
 
         moveHistory.Add(new Board(board));
@@ -46,7 +51,7 @@ public class StateManager : MonoBehaviour {
 
             board.SetPieceAtSquare(piece, square);//set piece at a destinated square
             //Debug.Log(string.Format("{0} {1}", piece, square));
-        } 
+        }
     }
 
     public Piece ChoosePiece(int pieceNumber, Player player)//piecenumber is from the for loop, player is from player(Player.A,Player.B)
@@ -88,30 +93,6 @@ public class StateManager : MonoBehaviour {
         moveHistory = new List<Board>();
     }
 
-    //public void Start()
-    //{
-    //    CreateBoard(6, 6);
-    //    CreatePieces(3);
-
-    //    //Run
-    //    CalculateNextState();
-    //}
-
-    //public Move[] PlayMoves()
-    //{
-    //    Move[] moves = new Move[board.GetPieces().Count];
-
-    //    int i = 0;
-
-    //    foreach (Piece piece in board.GetPieces())
-    //    {
-    //        moves[i] = ChooseMove(piece);
-    //        i++;
-    //    }
-
-    //    return moves;
-    //}
-
     public Move ChooseMove(Piece piece)
     {
         //STUB
@@ -129,38 +110,38 @@ public class StateManager : MonoBehaviour {
         }
     }
 
-    public void CalculateNextState(Move[] moves)
+    public void OnReceiveTurn(Move[][] turn)
+    {
+        if (otherTurn == null)
+        {
+            otherTurn = turn;
+            return;
+        }
+        Debug.Assert(otherTurn[0][0].piece.owner != turn[0][0].piece.owner); // just for checking, definitely will have error in the future
+        TurnLog turnLog = new TurnLog();
+        List<PhaseLog[]> tempPhasesList = new List<PhaseLog[]>();
+        for (int i = 0; i < 3; i++)
+        {
+            Move[] otherMoves = otherTurn[0];
+            Move[] moves = turn[0];
+            Move[] allMoves = new Move[moves.Length + otherMoves.Length];
+            moves.CopyTo(allMoves, 0);
+            otherMoves.CopyTo(allMoves, moves.Length);
+            PhaseLog[] phaseLogs = CalculateNextPhase(allMoves);
+            tempPhasesList.Add(phaseLogs);
+        }
+        turnLog.phases = tempPhasesList.ToArray();
+        otherTurn = null;
+        networkManager.SendTurnLog(turnLog);
+    }
+
+
+    public PhaseLog[] CalculateNextPhase(Move[] moves)
     {
         MoveData[] resolvedMoveDatas = ResolveMovement(moves);
         PhaseLog[] phaseLogs = ResolveCombat(resolvedMoveDatas);
-
-        Debug.Log("PL Format: puid, health, combatSq, finalSq");
-        Debug.Log("Attack Format: puid, damage, direction");
-
-        foreach (PhaseLog pl in phaseLogs)
-        {
-            string plDebug = string.Format(
-                "{0} {1} {2} {3}",
-                pl.piece.uid,
-                pl.piece.health,
-                pl.moveLog.combatSquare,
-                pl.moveLog.finalSquare
-            );
-            Debug.Log(plDebug);
-            foreach (AttackLog al in pl.attackLogs)
-            {
-                string alDebug = string.Format(
-                   "{0} {1} {2}",
-                   pl.piece.uid,
-                   al.damage,
-                   Move.DirectionToString(al.direction)
-               );
-                Debug.Log(alDebug);
-            }
-        }
-
+        // potential optimization
         board.ResetPositions();
-
         for (int i = 0; i < resolvedMoveDatas.Length; i++)
         {
             Piece piece = resolvedMoveDatas[i].piece;
@@ -168,38 +149,35 @@ public class StateManager : MonoBehaviour {
 
             board.SetPieceAtSquare(new Piece(piece), nextSquare);
         }
-
         moveHistory.Add(new Board(board));
+        UpdateBoard(board, phaseLogs);
+        // end: potential optimization
+        return phaseLogs;
     }
 
     class MoveData
     {
-        public Piece piece;
         public Move.Direction direction;
-
+        public Piece piece;
         public Square currentSquare; // piece's current square
         public Square nextSquare; // cached next square
-
-        public bool isBounce;
+        public bool isBounce = false;
 
         public MoveData(Move move, Square currentSquare, Square nextSquare)
         {
-            piece = move.piece;
-            direction = move.direction;
-
+            this.direction = move.direction;
+            this.piece = move.piece;
             this.currentSquare = currentSquare;
             this.nextSquare = nextSquare;
-
-            isBounce = false;
         }
 
         public override string ToString()
         {
-            return string.Format(
+            return String.Format(
                 "[MoveData Piece {0}, currentSq {1}, direction {2}, isBounce {3}]",
                 piece.uid,
                 currentSquare,
-                direction.ToString(),
+                Move.DirectionToString(direction),
                 isBounce
             );
         }
@@ -224,6 +202,20 @@ public class StateManager : MonoBehaviour {
     bool IsSquareLocked(Square square)
     {
         return lockedSquares.Contains(square);
+    }
+
+    void UpdateBoard(Board board, PhaseLog[] logs)
+    {
+        foreach (PhaseLog log in logs)
+        {
+            Piece piece = log.piece;
+            if (piece.health <= 0)
+            {
+                board.RemovePieceFromBoard(piece);
+                continue;
+            }
+            board.SetPieceAtSquare(piece, log.moveLog.finalSquare);
+        }
     }
 
     PhaseLog[] ResolveCombat(MoveData[] moveDatas)
@@ -253,7 +245,7 @@ public class StateManager : MonoBehaviour {
             List<AttackLog> attackLogs = ApplyAndRecordDamage(piece, attackedBy);
             Square finalSquare = moveData.isBounce ? moveData.currentSquare : combatSquare;
             MoveLog moveLog = new MoveLog(combatSquare, finalSquare);
-            PhaseLog phaseLog = new PhaseLog(piece, moveLog, attackLogs);
+            PhaseLog phaseLog = new PhaseLog(piece, moveLog, attackLogs.ToArray());
             phaseLogs[i] = phaseLog;
         }
 
@@ -268,13 +260,25 @@ public class StateManager : MonoBehaviour {
         List<AttackLog> attackLogs = new List<AttackLog>();
         foreach (MoveData attackerMoveData in attackerMoveDatas)
         {
-            int damage = baseDamage;
+            double damage = baseDamage;
             // apply enemy specific multipliers here
+            // damage dampening if outnumbered
+            switch (attackerMoveDatas.Count)
+            {
+                case 2:   // 40% on 2 enemies
+                    damage *= 0.4; break;
+                case 3:   // 20% on 3 enemies
+                    damage *= 0.2; break;
+                case 4:   // 5% on 4 enemies
+                    damage *= 0.05; break;
+            }
+            if (piece.IsCounteredBy(attackerMoveData.piece)) damage *= 1.2;
+            damage *= piece.health / (double)piece.maxHealth;
 
             Piece attacker = attackerMoveData.piece;
-            attacker.health -= damage;
+            attacker.health -= (damage < 1) ? 1 : (int)damage;   // at least deal 1 dmg
             Move.Direction directionOfRetaliation = Move.OppositeDirection(attackerMoveData.direction);
-            AttackLog attackLog = new AttackLog(damage, directionOfRetaliation);
+            AttackLog attackLog = new AttackLog((int)damage, directionOfRetaliation);
             attackLogs.Add(attackLog);
         }
         return attackLogs;
@@ -285,10 +289,11 @@ public class StateManager : MonoBehaviour {
         ResetLockedSquares();
 
         MoveData[] moveMetaDatas =
-            moves.Select(move => new MoveData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
+            moves.Where(move => board.HasPiece(move.piece))
+                 .Select(move => new MoveData(move, board.GetCurrentSquare(move.piece), board.NextSquare(move)))
                  .ToArray();
 
-        List<int> moveIndices = Enumerable.Range(0, moves.Length).ToList();
+        List<int> moveIndices = Enumerable.Range(0, moveMetaDatas.Length).ToList();
 
         // Consider stationary pieces
         moveIndices = moveIndices.Where(mInd =>
@@ -346,8 +351,8 @@ public class StateManager : MonoBehaviour {
         validMoveIndices.ForEach(validMoveIndex =>
         {
             MoveData moveData = moveMetaDatas[validMoveIndex];
-            //Debug.Assert(!IsSquareLocked(moveData.nextSquare)); // sanity check
-            //Debug.Assert(!moveData.isBounce); // sanity check
+            Debug.Assert(!IsSquareLocked(moveData.nextSquare)); // sanity check
+            Debug.Assert(!moveData.isBounce); // sanity check
             moveData.currentSquare = moveData.nextSquare;
             moveData.direction = Move.Direction.NONE;
         });
